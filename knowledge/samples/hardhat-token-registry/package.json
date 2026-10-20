@@ -1,0 +1,32 @@
+{
+  "name": "hardhat-token-registry-sample",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TradeTrust Token Registry Hardhat 样例：部署 Token Registry、签名 W3C VC 并铸造可转让记录",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy-token-registry.ts --network hardhat",
+    "mint:local": "hardhat run scripts/mint-transferable.ts --network hardhat",
+    "demo:local": "hardhat run scripts/deploy-and-mint.ts --network hardhat"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.4",
+    "chai": "^4.3.10",
+    "hardhat": "^2.22.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@tradetrust-tt/token-registry": "^5.5.2",
+    "@tradetrust-tt/tt-verify": "^9.7.6",
+    "@trustvc/trustvc": "^2.15.4",
+    "@trustvc/w3c-issuer": "^2.3.0",
+    "dotenv": "^16.3.1",
+    "ethers": "^5.7.2",
+    "ethers6": "npm:ethers@^6.17.0"
+  }
+}

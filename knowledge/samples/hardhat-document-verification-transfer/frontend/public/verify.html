@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>验证文档 | TradeTrust Demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="file"] { display: block; }
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+    .hash { margin-top: 12px; padding: 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; font-size: 13px; word-break: break-all; }
+    button { margin-top: 16px; margin-right: 8px; padding: 10px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .result { margin-top: 16px; padding: 16px; border-radius: 8px; background: #f3f4f6; font-size: 14px; line-height: 1.6; }
+    .result.valid { background: #d1fae5; color: #065f46; }
+    .result.invalid { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .wallet-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; }
+    .wallet-info { padding: 6px 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>验证文档</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <div class="wallet-bar">
+      <span id="walletStatus">钱包未连接</span>
+      <button id="connectBtn" type="button">连接钱包</button>
+      <button id="disconnectBtn" type="button" style="display:none; background:#6b7280;">断开</button>
+    </div>
+
+    <p class="muted">上传文件自动计算 keccak256，或直接粘贴哈希，查询 DocumentRegistry 链上状态。</p>
+
+    <label for="file">选择文件（可选）</label>
+    <input id="file" type="file" />
+    <button id="compute">计算文件哈希</button>
+    <div id="hashBox" class="hash" style="display:none;"></div>
+
+    <label for="docHash">文档哈希（bytes32，可直接粘贴）</label>
+    <input id="docHash" type="text" placeholder="0x..." />
+
+    <label for="rpc">RPC URL（可选，留空则使用默认公共 RPC）</label>
+    <input id="rpc" type="text" placeholder="https://ethereum-sepolia-rpc.publicnode.com" />
+
+    <button id="verify" disabled>查询链上状态</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=8"></script>
+  <script>
+    const fileInput = document.getElementById('file');
+    const computeBtn = document.getElementById('compute');
+    const verifyBtn = document.getElementById('verify');
+    const hashBox = document.getElementById('hashBox');
+    const hashInput = document.getElementById('docHash');
+    const rpcInput = document.getElementById('rpc');
+    const result = document.getElementById('result');
+    const walletStatus = document.getElementById('walletStatus');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+
+    let currentHash = '';
+
+    function updateWalletStatus() {
+      if (WALLET.connected) {
+        walletStatus.innerHTML = `<span class="wallet-info">已连接 ${short(WALLET.address)} (chainId=${WALLET.chainId})</span>`;
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+      } else {
+        walletStatus.textContent = '钱包未连接';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+      }
+    }
+
+    onWalletUIUpdate(updateWalletStatus);
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        await connectWallet();
+        updateWalletStatus();
+      } catch (e) {
+        alert(`连接失败：${e.message}`);
+      }
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      disconnectWallet();
+      updateWalletStatus();
+    });
+
+    function setReady(enabled) {
+      verifyBtn.disabled = !enabled;
+      if (!enabled) result.textContent = '正在加载合约配置…';
+    }
+
+    computeBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) { alert('请先选择文件'); return; }
+      currentHash = await hashFile(file);
+      hashBox.style.display = 'block';
+      hashBox.textContent = `keccak256: ${currentHash}`;
+      hashInput.value = currentHash;
+      result.textContent = '';
+      result.className = 'result';
+    });
+
+    verifyBtn.addEventListener('click', async () => {
+      currentHash = hashInput.value.trim();
+      if (!currentHash || !currentHash.startsWith('0x') || currentHash.length !== 66) {
+        alert('请输入 32 字节哈希（以 0x 开头，共 66 字符）');
+        return;
+      }
+      if (!CONFIG.registry) {
+        result.textContent = '合约配置尚未加载，请刷新页面。';
+        result.className = 'result invalid';
+        return;
+      }
+      verifyBtn.disabled = true;
+      result.textContent = '查询中…';
+      result.className = 'result';
+      try {
+        const provider = getReadProvider(rpcInput.value.trim());
+        const registry = getRegistryContract(provider);
+        const [status, issuedAt, revokedAt, issuer] = await registry.verify(currentHash);
+        const isValid = await registry.isValid(currentHash);
+
+        const statusMap = { 0: 'None（未记录）', 1: 'Issued（已签发）', 2: 'Revoked（已撤销）' };
+        const lines = [
+          `文档哈希：${currentHash}`,
+          `Registry 状态：${statusMap[Number(status)] || status}`,
+          `是否有效：${isValid ? '是' : '否'}`,
+          `签发时间：${issuedAt ? new Date(Number(issuedAt) * 1000).toLocaleString() : '-'}`,
+          `撤销时间：${revokedAt ? new Date(Number(revokedAt) * 1000).toLocaleString() : '-'}`,
+          `签发者：${issuer}`,
+        ];
+        result.innerHTML = `<pre>${lines.join('\n')}</pre>`;
+        result.className = `result ${isValid ? 'valid' : 'invalid'}`;
+      } catch (e) {
+        let msg = e.message || String(e);
+        if (msg.includes('BAD_DATA') || msg.includes('0x')) {
+          msg += '。常见原因：RPC 网络不对、合约地址无代码、或 ABI 不匹配。请检查上方 RPC 是否为 Sepolia，并确认 deployment.json 中的 Registry 地址正确。';
+        }
+        result.textContent = `查询失败：${msg}`;
+        result.className = 'result invalid';
+      } finally {
+        verifyBtn.disabled = false;
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      setReady(false);
+      try {
+        await window.configReady;
+        updateWalletStatus();
+        if (CONFIG.registry) {
+          setReady(true);
+          result.textContent = '';
+        } else {
+          result.textContent = '未找到部署配置，请先执行 npm run deploy:sepolia。';
+        }
+      } catch (e) {
+        result.textContent = '配置加载失败：' + e.message;
+        result.className = 'result invalid';
+      }
+    });
+  </script>
+</body>
+</html>

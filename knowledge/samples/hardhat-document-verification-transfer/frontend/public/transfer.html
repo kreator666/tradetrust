@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>转移文档 | TradeTrust Demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    button { margin-top: 12px; margin-right: 8px; padding: 10px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .section { margin-top: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; }
+    .section h3 { margin-top: 0; font-size: 16px; }
+    .info { font-family: monospace; font-size: 13px; line-height: 1.6; }
+    .result { margin-top: 12px; padding: 12px; border-radius: 6px; background: #f3f4f6; font-size: 13px; }
+    .result.success { background: #d1fae5; color: #065f46; }
+    .result.error { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .warning { background: #fffbeb; color: #92400e; padding: 12px; border-radius: 6px; font-size: 13px; }
+    .guide { background: #eff6ff; color: #1e40af; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.7; }
+    .guide h4 { margin: 0 0 8px; font-size: 14px; }
+    .guide ul { margin: 6px 0; padding-left: 18px; }
+    .guide li { margin-bottom: 4px; }
+    .guide code { background: #dbeafe; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>转移文档</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+    <div class="wallet-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:13px;">
+      <span id="walletStatus">钱包未连接</span>
+      <button id="connect" type="button">连接 MetaMask</button>
+      <button id="disconnect" type="button" style="display:none; background:#6b7280;">断开</button>
+    </div>
+
+    <p class="muted">以 DocumentEscrow 的 beneficiary / holder 身份执行转让或归还。</p>
+
+    <div class="guide">
+      <h4>📘 新手指南：如何转移文档</h4>
+      <p>
+        每份文档对应一个 <code>DocumentEscrow</code> 合约，里面有两个角色：
+      </p>
+      <ul>
+        <li><code>beneficiary</code>（受益人）：文档的实际权益所有者，可提名新的受益人。</li>
+        <li><code>holder</code>（持有人）：文档的法律/托管持有人，可提名新的持有人，也可归还文档。</li>
+      </ul>
+      <p><strong>转让方式一：分步转让（双方不是同一人）</strong></p>
+      <ul>
+        <li>受益人变更：当前 <code>beneficiary</code> 在「提名人」输入新地址 → 点「提名受益人」；然后当前 <code>holder</code> 点「转让受益人」确认。</li>
+        <li>持有人变更：当前 <code>holder</code> 在「提名人」输入新地址 → 点「提名持有人」；然后当前 <code>beneficiary</code> 点「转让持有人」确认。</li>
+      </ul>
+      <p><strong>转让方式二：一步转让（当前钱包同时是 beneficiary 和 holder）</strong></p>
+      <ul>
+        <li>填写「新受益人地址」和「新持有人地址」→ 点「同时转让受益人与持有人」。</li>
+      </ul>
+      <p><strong>归还文档</strong></p>
+      <ul>
+        <li>当前 <code>holder</code> 点击「归还文档」，文档标记为 <code>surrendered</code>，之后不可再转让。</li>
+      </ul>
+      <p><strong>测试提示</strong></p>
+      <ul>
+        <li>当前演示 Escrow 的 beneficiary 与 holder 均为部署账户 <code id="deployer">-</code>。</li>
+        <li>要测试转让，请用部署账户连接（在 MetaMask 中导入部署私钥），或创建新的 Escrow 并指定其他地址。</li>
+      </ul>
+    </div>
+
+    <label for="escrow">DocumentEscrow 地址</label>
+    <input id="escrow" type="text" placeholder="0x..." />
+
+    <button id="load">加载 Escrow</button>
+
+    <div class="section">
+      <h3>当前状态</h3>
+      <div id="info" class="info">未加载</div>
+    </div>
+
+    <div class="section">
+      <h3>转让操作</h3>
+      <label for="nominee">提名人 / 单一转让目标地址</label>
+      <input id="nominee" type="text" placeholder="0x..." />
+
+      <div class="row">
+        <div>
+          <label for="newBeneficiary">新受益人地址（transferOwners）</label>
+          <input id="newBeneficiary" type="text" placeholder="0x..." />
+        </div>
+        <div>
+          <label for="newHolder">新持有人地址（transferOwners）</label>
+          <input id="newHolder" type="text" placeholder="0x..." />
+        </div>
+      </div>
+
+      <button id="nominateBeneficiary" disabled>提名受益人</button>
+      <button id="transferBeneficiary" disabled>转让受益人</button>
+      <button id="nominateHolder" disabled>提名持有人</button>
+      <button id="transferHolder" disabled>转让持有人</button>
+      <button id="transferOwners" disabled>同时转让受益人与持有人</button>
+      <button id="surrender" disabled>归还文档</button>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=9"></script>
+  <script>
+    const walletStatus = document.getElementById('walletStatus');
+
+    const els = {
+      escrow: document.getElementById('escrow'),
+      connect: document.getElementById('connect'),
+      disconnect: document.getElementById('disconnect'),
+      load: document.getElementById('load'),
+      info: document.getElementById('info'),
+      nominee: document.getElementById('nominee'),
+      newBeneficiary: document.getElementById('newBeneficiary'),
+      newHolder: document.getElementById('newHolder'),
+      nominateBeneficiary: document.getElementById('nominateBeneficiary'),
+      transferBeneficiary: document.getElementById('transferBeneficiary'),
+      nominateHolder: document.getElementById('nominateHolder'),
+      transferHolder: document.getElementById('transferHolder'),
+      transferOwners: document.getElementById('transferOwners'),
+      surrender: document.getElementById('surrender'),
+      result: document.getElementById('result'),
+    };
+
+    let escrowContract = null;
+    let currentInfo = {};
+
+    function updateWalletStatus() {
+      if (WALLET.connected) {
+        walletStatus.innerHTML = `已连接 <code>${short(WALLET.address)}</code> (chainId=${WALLET.chainId})`;
+        els.connect.textContent = '已连接';
+        els.connect.disabled = true;
+        els.disconnect.style.display = 'inline-block';
+      } else {
+        walletStatus.textContent = '钱包未连接';
+        els.connect.textContent = '连接 MetaMask';
+        els.connect.disabled = false;
+        els.disconnect.style.display = 'none';
+      }
+    }
+
+    onWalletUIUpdate(updateWalletStatus);
+
+    function setButtons(enabled) {
+      [
+        'nominateBeneficiary', 'transferBeneficiary', 'nominateHolder',
+        'transferHolder', 'transferOwners', 'surrender'
+      ].forEach((id) => (els[id].disabled = !enabled));
+    }
+
+    function showResult(msg, success) {
+      els.result.textContent = msg;
+      els.result.className = `result ${success ? 'success' : 'error'}`;
+    }
+
+    els.connect.addEventListener('click', async () => {
+      try {
+        await connectWallet();
+        updateWalletStatus();
+        showResult(`已连接：${WALLET.address}`, true);
+      } catch (e) {
+        showResult(`连接失败：${e.message}`, false);
+      }
+    });
+
+    els.disconnect.addEventListener('click', () => {
+      disconnectWallet();
+      updateWalletStatus();
+      showResult('已断开钱包连接', true);
+    });
+
+    els.load.addEventListener('click', async () => {
+      const addr = els.escrow.value.trim();
+      if (!addr) { alert('请输入 Escrow 地址'); return; }
+      const provider = WALLET.connected ? new ethers.BrowserProvider(window.ethereum) : getReadProvider();
+      escrowContract = getEscrowContract(provider, addr);
+      try {
+        const [registryAddr, docHash, beneficiary, holder, surrendered] = await Promise.all([
+          escrowContract.registry(),
+          escrowContract.documentHash(),
+          escrowContract.beneficiary(),
+          escrowContract.holder(),
+          escrowContract.surrendered(),
+        ]);
+        currentInfo = { registryAddr, docHash, beneficiary, holder, surrendered };
+        const signerAddress = WALLET.address;
+        const isBeneficiary = signerAddress && beneficiary.toLowerCase() === signerAddress.toLowerCase();
+        const isHolder = signerAddress && holder.toLowerCase() === signerAddress.toLowerCase();
+        els.info.innerHTML = `
+Registry: ${registryAddr}<br/>
+文档哈希: ${docHash}<br/>
+beneficiary: ${beneficiary} ${isBeneficiary ? '(当前账户)' : ''}<br/>
+holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
+已归还: ${surrendered}
+        `;
+        setButtons(WALLET.connected && (isBeneficiary || isHolder));
+        showResult('加载成功', true);
+      } catch (e) {
+        showResult(`加载失败：${e.message}`, false);
+      }
+    });
+
+    async function sendTx(fn, args, successMsg) {
+      if (!WALLET.connected || !escrowContract) return;
+      const addr = els.escrow.value.trim();
+      const signer = await getConnectedSigner();
+      const connected = getEscrowContract(signer, addr);
+      try {
+        const tx = await connected[fn](...args);
+        await tx.wait();
+        showResult(`${successMsg}\n交易：${tx.hash}`, true);
+        await els.load.click();
+      } catch (e) {
+        showResult(`交易失败：${e.reason || e.message}`, false);
+      }
+    }
+
+    els.nominateBeneficiary.addEventListener('click', () => sendTx('nominateBeneficiary', [els.nominee.value.trim()], '已提名受益人'));
+    els.transferBeneficiary.addEventListener('click', () => sendTx('transferBeneficiary', [els.nominee.value.trim()], '已转让受益人'));
+    els.nominateHolder.addEventListener('click', () => sendTx('nominateHolder', [els.nominee.value.trim()], '已提名持有人'));
+    els.transferHolder.addEventListener('click', () => sendTx('transferHolder', [els.nominee.value.trim()], '已转让持有人'));
+    els.transferOwners.addEventListener('click', () => sendTx('transferOwners', [els.newBeneficiary.value.trim(), els.newHolder.value.trim()], '已同时转让受益人与持有人'));
+    els.surrender.addEventListener('click', () => sendTx('surrender', [], '已归还文档'));
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      updateWalletStatus();
+      if (CONFIG.escrow) els.escrow.value = CONFIG.escrow;
+      if (CONFIG.deployer) {
+        const deployerEl = document.getElementById('deployer');
+        if (deployerEl) deployerEl.textContent = CONFIG.deployer;
+      }
+    });
+  </script>
+</body>
+</html>

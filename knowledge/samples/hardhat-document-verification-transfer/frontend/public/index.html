@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeTrust UUPS 文档验证与转移</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .wallet-bar { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .wallet-bar button { margin: 0; }
+    .wallet-info { padding: 6px 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 24px; }
+    .card { display: block; padding: 20px; border-radius: 8px; background: #f9fafb; border: 1px solid #e5e7eb; text-decoration: none; color: #111827; transition: transform .1s, box-shadow .1s; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .card h3 { margin: 0 0 8px; font-size: 16px; }
+    .card p { margin: 0; font-size: 13px; color: #6b7280; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .info { margin-top: 24px; padding: 16px; background: #f3f4f6; border-radius: 8px; font-size: 13px; }
+    .info div { margin-bottom: 6px; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #e5e7eb; padding: 2px 4px; border-radius: 4px; }
+    button { padding: 10px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .success { color: #065f46; background: #d1fae5; padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>TradeTrust UUPS 文档验证与转移</h1>
+      <div class="wallet-bar">
+        <span id="walletStatus">未连接钱包</span>
+        <button id="connectBtn">连接钱包</button>
+        <button id="disconnectBtn" style="display:none; background:#6b7280;">断开</button>
+      </div>
+    </div>
+    <p class="muted">基于 Sepolia 测试网的 UUPS 可升级文档注册表与转移托管合约演示。</p>
+
+    <div class="cards">
+      <a class="card" href="issue.html">
+        <h3>签发文档</h3>
+        <p>上传文件，计算 keccak256 哈希，并写入 DocumentRegistry。</p>
+      </a>
+      <a class="card" href="verify.html">
+        <h3>验证文档</h3>
+        <p>上传文件，计算哈希，查询链上签发/撤销状态。</p>
+      </a>
+      <a class="card" href="transfer.html">
+        <h3>转移文档</h3>
+        <p>以 beneficiary / holder 身份提名、转让或归还文档。</p>
+      </a>
+      <a class="card" href="admin.html">
+        <h3>权限管理</h3>
+        <p>以管理员身份授权或撤销其他地址的 ISSUER_ROLE。</p>
+      </a>
+    </div>
+
+    <div class="info" id="info">加载部署配置中...</div>
+  </div>
+
+  <script>
+    window.scriptLoadErrors = [];
+    window.addEventListener('error', (e) => {
+      console.error('[global error]', e.message, e.filename, e.lineno);
+      const info = document.getElementById('info');
+      if (info) info.textContent = 'JS 错误：' + e.message + ' (' + (e.filename || '') + ':' + (e.lineno || '') + ')';
+    });
+    function scriptError(name) {
+      window.scriptLoadErrors.push(name);
+      console.error('脚本加载失败：' + name);
+      const info = document.getElementById('info');
+      if (info) info.textContent = '脚本加载失败：' + name + '，请检查网络或强制刷新页面 (Ctrl+F5 / Cmd+Shift+R)。';
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js" onerror="scriptError('ethers')"></script>
+  <script src="js/common.js?v=8" onerror="scriptError('common.js')"></script>
+  <script src="js/index.js?v=5" onerror="scriptError('index.js')"></script>
+</body>
+</html>

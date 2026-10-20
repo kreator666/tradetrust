@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>权限管理 | TradeTrust Demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+    button { margin-top: 16px; margin-right: 8px; padding: 10px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    button.warning { background: #dc2626; }
+    button.warning:hover { background: #b91c1c; }
+    .result { margin-top: 16px; padding: 16px; border-radius: 8px; background: #f3f4f6; font-size: 14px; line-height: 1.6; }
+    .result.success { background: #d1fae5; color: #065f46; }
+    .result.error { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .wallet-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; }
+    .wallet-info { padding: 6px 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; }
+    .info { margin-top: 16px; padding: 12px; background: #eff6ff; border-radius: 6px; font-size: 13px; color: #1e40af; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #e5e7eb; padding: 2px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>权限管理</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <div class="wallet-bar">
+      <span id="walletStatus">钱包未连接</span>
+      <button id="connectBtn" type="button">连接钱包</button>
+      <button id="disconnectBtn" type="button" style="display:none; background:#6b7280;">断开</button>
+    </div>
+
+    <div class="info">
+      DocumentRegistry 的 <code>DEFAULT_ADMIN_ROLE</code> 可以授权或撤销其他地址的 <code>ISSUER_ROLE</code>。<br/>
+      当前部署的 Registry 管理员即部署账户 <code id="deployer">-</code>。
+    </div>
+
+    <label for="target">目标地址</label>
+    <input id="target" type="text" placeholder="0x..." />
+
+    <button id="check">检查 ISSUER_ROLE</button>
+    <button id="grant">授权 ISSUER_ROLE</button>
+    <button id="revoke" class="warning">撤销 ISSUER_ROLE</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=8"></script>
+  <script>
+    const walletStatus = document.getElementById('walletStatus');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const targetInput = document.getElementById('target');
+    const checkBtn = document.getElementById('check');
+    const grantBtn = document.getElementById('grant');
+    const revokeBtn = document.getElementById('revoke');
+    const result = document.getElementById('result');
+    const deployerEl = document.getElementById('deployer');
+
+    function updateWalletStatus() {
+      if (WALLET.connected) {
+        walletStatus.innerHTML = `<span class="wallet-info">已连接 ${short(WALLET.address)} (chainId=${WALLET.chainId})</span>`;
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+      } else {
+        walletStatus.textContent = '钱包未连接';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+      }
+    }
+
+    onWalletUIUpdate(updateWalletStatus);
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        await connectWallet();
+        updateWalletStatus();
+      } catch (e) {
+        alert(`连接失败：${e.message}`);
+      }
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      disconnectWallet();
+      updateWalletStatus();
+    });
+
+    function show(msg, success) {
+      result.innerHTML = msg;
+      result.className = `result ${success ? 'success' : 'error'}`;
+    }
+
+    function getTarget() {
+      const addr = targetInput.value.trim();
+      if (!addr || !addr.startsWith('0x') || addr.length !== 42) {
+        throw new Error('请输入有效以太坊地址');
+      }
+      return addr;
+    }
+
+    checkBtn.addEventListener('click', async () => {
+      try {
+        const addr = getTarget();
+        const provider = getReadProvider();
+        const registry = getRegistryContract(provider);
+        const role = await registry.ISSUER_ROLE();
+        const has = await registry.hasRole(role, addr);
+        show(`地址 <code>${addr}</code> ${has ? '拥有' : '没有'} ISSUER_ROLE`, has);
+      } catch (e) {
+        show(`检查失败：${e.message}`, false);
+      }
+    });
+
+    grantBtn.addEventListener('click', async () => {
+      grantBtn.disabled = true;
+      try {
+        const addr = getTarget();
+        const signer = await getConnectedSigner();
+        const registry = getRegistryContract(signer);
+        const role = await registry.ISSUER_ROLE();
+        const tx = await registry.grantRole(role, addr);
+        await tx.wait();
+        show(`已授权 <code>${addr}</code> 拥有 ISSUER_ROLE<br/>交易：<a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>`, true);
+      } catch (e) {
+        show(`授权失败：${e.reason || e.message}`, false);
+      } finally {
+        grantBtn.disabled = false;
+      }
+    });
+
+    revokeBtn.addEventListener('click', async () => {
+      if (!confirm('确定要撤销该地址的 ISSUER_ROLE 吗？')) return;
+      revokeBtn.disabled = true;
+      try {
+        const addr = getTarget();
+        const signer = await getConnectedSigner();
+        const registry = getRegistryContract(signer);
+        const role = await registry.ISSUER_ROLE();
+        const tx = await registry.revokeRole(role, addr);
+        await tx.wait();
+        show(`已撤销 <code>${addr}</code> 的 ISSUER_ROLE<br/>交易：<a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>`, true);
+      } catch (e) {
+        show(`撤销失败：${e.reason || e.message}`, false);
+      } finally {
+        revokeBtn.disabled = false;
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      updateWalletStatus();
+      if (CONFIG.deployer) deployerEl.textContent = CONFIG.deployer;
+    });
+  </script>
+</body>
+</html>

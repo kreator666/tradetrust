@@ -1,0 +1,12 @@
+[submodule "knowledge/samples/foundry-token-registry/lib/forge-std"]
+	path = knowledge/samples/foundry-token-registry/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "knowledge/samples/foundry-token-registry/lib/token-registry"]
+	path = knowledge/samples/foundry-token-registry/lib/token-registry
+	url = https://github.com/TradeTrust/token-registry
+[submodule "knowledge/samples/foundry-token-registry/lib/openzeppelin-contracts"]
+	path = knowledge/samples/foundry-token-registry/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "knowledge/samples/foundry-token-registry/lib/openzeppelin-contracts-upgradeable"]
+	path = knowledge/samples/foundry-token-registry/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable

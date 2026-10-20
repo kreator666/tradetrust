@@ -1,0 +1,336 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0xFFeBB48F2b092D8FD74911D6C04465E0CfcF4B59",
+      "txHash": "0xe0532b7a52c30e8c80306e55a365f4e40f461036715e8c9369c12312875acc67",
+      "kind": "uups"
+    },
+    {
+      "address": "0xc81fB8f52C4d88C3f0281349D04fc91aea07aeD7",
+      "txHash": "0xb80d0e5a1c796c6f31e32799e91a951710dee24cca505729929dde286267ff35",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "d1daaed5b085d3748a0cb142aec8afa11a9e3ecd52af53669b2a68327b2e40b5": {
+      "address": "0x2c68ced45ac4d72Df638021fbB605F3EE5AD7B3b",
+      "txHash": "0x52a695590ee84eacf8df63cf24bee81a829d5e46f3870d6237139c73e96a0f02",
+      "layout": {
+        "solcVersion": "0.8.28",
+        "storage": [
+          {
+            "label": "documents",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_mapping(t_bytes32,t_struct(Document)2602_storage)",
+            "contract": "DocumentRegistry",
+            "src": "contracts\\DocumentRegistry.sol:33"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)24_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AccessControlStorage)34_storage": {
+            "label": "struct AccessControlUpgradeable.AccessControlStorage",
+            "members": [
+              {
+                "label": "_roles",
+                "type": "t_mapping(t_bytes32,t_struct(RoleData)24_storage)",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(InitializableStorage)432_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(PausableStorage)187_storage": {
+            "label": "struct PausableUpgradeable.PausableStorage",
+            "members": [
+              {
+                "label": "_paused",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(RoleData)24_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "hasRole",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_enum(Status)2592": {
+            "label": "enum DocumentRegistry.Status",
+            "members": [
+              "None",
+              "Issued",
+              "Revoked"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_bytes32,t_struct(Document)2602_storage)": {
+            "label": "mapping(bytes32 => struct DocumentRegistry.Document)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Document)2602_storage": {
+            "label": "struct DocumentRegistry.Document",
+            "members": [
+              {
+                "label": "status",
+                "type": "t_enum(Status)2592",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "issuedAt",
+                "type": "t_uint64",
+                "offset": 1,
+                "slot": "0"
+              },
+              {
+                "label": "revokedAt",
+                "type": "t_uint64",
+                "offset": 9,
+                "slot": "0"
+              },
+              {
+                "label": "issuer",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Pausable": [
+            {
+              "contract": "PausableUpgradeable",
+              "label": "_paused",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\utils\\PausableUpgradeable.sol:21",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.AccessControl": [
+            {
+              "contract": "AccessControlUpgradeable",
+              "label": "_roles",
+              "type": "t_mapping(t_bytes32,t_struct(RoleData)24_storage)",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\AccessControlUpgradeable.sol:61",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "a676a9d37cde39db4e263cde6a7a18171dcd39a2493dca97c56b5ba1c68fc4d7": {
+      "address": "0x2be42B012EecCe3B5Db4dB49253034e6181806f4",
+      "txHash": "0xc2fc7d63d0979bc09ef921b630f7d3e91d30d99943299f9404314fe375ead050",
+      "layout": {
+        "solcVersion": "0.8.28",
+        "storage": [
+          {
+            "label": "registry",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_contract(IDocumentRegistry)2945",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:17"
+          },
+          {
+            "label": "documentHash",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_bytes32",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:18"
+          },
+          {
+            "label": "beneficiary",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:19"
+          },
+          {
+            "label": "holder",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_address",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:20"
+          },
+          {
+            "label": "beneficiaryNominee",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:21"
+          },
+          {
+            "label": "holderNominee",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:23"
+          },
+          {
+            "label": "admin",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:25"
+          },
+          {
+            "label": "surrendered",
+            "offset": 20,
+            "slot": "6",
+            "type": "t_bool",
+            "contract": "DocumentEscrow",
+            "src": "contracts\\DocumentEscrow.sol:25"
+          }
+        ],
+        "types": {
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)432_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IDocumentRegistry)2945": {
+            "label": "contract IDocumentRegistry",
+            "numberOfBytes": "20"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
