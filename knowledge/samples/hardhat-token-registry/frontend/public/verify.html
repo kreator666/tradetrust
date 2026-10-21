@@ -122,9 +122,31 @@
 
         // 简单 endorsement chain：读取 TitleEscrow 事件
         const escrow = getTitleEscrowContract(provider, owner);
-        const filter = escrow.filters ? escrow.filters.BeneficiaryNominated?.() : null;
-        const logs = filter ? await escrow.queryFilter(filter, 0, 'latest') : [];
-        const allLogs = await escrow.queryFilter({}, 0, 'latest');
+        let allLogs = [];
+        try {
+          allLogs = await escrow.queryFilter('*', 0, 'latest');
+        } catch (e) {
+          console.warn('读取全部事件失败，尝试读取已知事件', e);
+          const eventNames = [
+            'BeneficiaryNominated',
+            'HolderNominated',
+            'BeneficiaryTransferred',
+            'HolderTransferred',
+            'OwnersTransferred',
+            'ReturnToIssuer',
+            'TransferRejected',
+          ];
+          for (const name of eventNames) {
+            try {
+              const filter = escrow.filters[name]();
+              const logs = await escrow.queryFilter(filter, 0, 'latest');
+              allLogs.push(...logs);
+            } catch (err) {
+              // 忽略不存在的事件
+            }
+          }
+          allLogs.sort((a, b) => a.blockNumber - b.blockNumber);
+        }
 
         if (allLogs.length === 0) {
           chainEl.innerHTML = '<div class="result muted">暂无 Endorsement Chain 事件</div>';
@@ -132,7 +154,7 @@
           chainEl.innerHTML = '<h3>Endorsement Chain 事件</h3>' +
             allLogs.map((log) => {
               const name = log.fragment ? log.fragment.name : 'Unknown';
-              const args = log.args ? Object.entries(log.args).map(([k, v]) => `${k}: ${v}`).join('<br/>') : '';
+              const args = log.args ? Object.entries(log.args).filter(([k]) => isNaN(Number(k))).map(([k, v]) => `${k}: ${v}`).join('<br/>') : '';
               return `<div class="chain-item">
                 <div class="type">${name}</div>
                 <div>${args}</div>
