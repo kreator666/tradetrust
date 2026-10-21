@@ -258,14 +258,17 @@
         const signerAddress = WALLET.address;
         const isBeneficiary = signerAddress && beneficiary.toLowerCase() === signerAddress.toLowerCase();
         const isHolder = signerAddress && holder.toLowerCase() === signerAddress.toLowerCase();
+        const canOperate = WALLET.connected && (isBeneficiary || isHolder);
         els.info.innerHTML = `
 Registry: ${registryAddr}<br/>
 文档哈希: ${docHash}<br/>
 beneficiary: ${beneficiary} ${isBeneficiary ? '(当前账户)' : ''}<br/>
 holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
-已归还: ${surrendered}
+已归还: ${surrendered}<br/>
+钱包状态: ${WALLET.connected ? `已连接 ${short(WALLET.address)}` : '未连接'}<br/>
+操作权限: ${canOperate ? '<span style="color:#065f46;">✓ 可操作转让/归还</span>' : '<span style="color:#991b1b;">✗ 当前钱包不是 beneficiary 或 holder，按钮已禁用</span>'}
         `;
-        setButtons(WALLET.connected && (isBeneficiary || isHolder));
+        setButtons(canOperate);
         saveEscrow({ address: addr, documentHash, beneficiary, holder, admin: '-' });
         showResult('加载成功', true);
       } catch (e) {
