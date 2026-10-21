@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Imports",
+  "sourceName": "contracts/Imports.sol",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603f80601d6000396000f3fe6080604052600080fdfea26469706673582212206bdec464beae100bd34407e8e99908e69de8f7c13e7e74d920e97c79b1927b9c64736f6c634300081c0033",
+  "deployedBytecode": "0x6080604052600080fdfea26469706673582212206bdec464beae100bd34407e8e99908e69de8f7c13e7e74d920e97c79b1927b9c64736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
