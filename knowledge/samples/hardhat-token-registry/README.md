@@ -1,71 +1,82 @@
-# Hardhat Token Registry 样例
+# TradeTrust Token Registry Hardhat 样例
 
-基于 `@tradetrust-tt/token-registry` 与 `@trustvc/trustvc`，演示如何在本地 Hardhat 网络：
+本目录提供基于 Hardhat 的官方 TradeTrust Token Registry 部署与交互样例，展示如何在 Sepolia 测试网部署 `TradeTrustToken`（Token Registry）与 `TitleEscrowFactory`，并铸造一份可转让记录（Transferable Record）。
 
-1. 部署 `TitleEscrowFactory` 与 `TradeTrustToken` Token Registry。
-2. 使用 `did:web` + `ecdsa-sd-2023` 签名 W3C VC。
-3. 提取 `tokenId` 并在链上铸造可转让记录。
-4. 验证 W3C 签名（说明）。
+## 合约关系
 
-## 说明
+```
+TradeTrustToken (Token Registry)
+    └── mint(beneficiary, holder, tokenId)
+            └── TitleEscrowFactory 自动创建 TitleEscrow
+                    └── TitleEscrow 管理 beneficiary / holder
+```
 
-- Token Registry v5 的 TypeChain 绑定基于 **ethers v6**。
-- Hardhat v2 默认注入 **ethers v5**，因此本样例通过 `ethers6` 别名安装 ethers v6，并使用 `BrowserProvider(hre.network.provider)` 获取 v6 signer。
+- `TradeTrustToken`：基于 ERC-721 Soulbound Token，每份文档对应一个 token。
+- `TitleEscrowFactory`：工厂合约，负责为每个 token 创建对应的 `TitleEscrow`。
+- `TitleEscrow`：管理单份文档的 `beneficiary`（受益人）与 `holder`（持有人），支持提名、转让、归还等操作。
 
-## 安装
+## 前置要求
 
 ```bash
+cd knowledge/samples/hardhat-token-registry
 npm install
 ```
 
-## 测试
+复制 `.env.example` 为 `.env` 并填入：
+
+```
+PRIVATE_KEY=...
+SEPOLIA_RPC=https://ethereum-sepolia-rpc.publicnode.com
+ETHERSCAN_API_KEY=...
+```
+
+## 本地测试
 
 ```bash
+npm run build
 npm test
 ```
 
-该命令会在 Hardhat Network 上跑完整端到端测试，无需真实网络。
-
-## 本地一键演示
+## Sepolia 部署官方 Token Registry
 
 ```bash
-npm run demo:local
+npx hardhat run scripts/deploy-token-registry-sepolia.ts --network sepolia
 ```
 
-该脚本在同一个 Hardhat Network 会话中完成部署 + 签名 + 铸造。
+输出会写入 `deployment-official.json`。
 
-## 单独脚本（用于持久网络）
+当前示例部署结果：
+
+| 项目 | 地址 |
+|---|---|
+| TitleEscrowFactory | `0x1a042Cd4e71a958c62B86c76e4A3FE010EF7d3f7` |
+| TradeTrustToken (Token Registry) | `0x33F0Bfd8Ce215e34EA6776f3312a3428A8752570` |
+
+## 铸造可转让记录
 
 ```bash
-# 1. 部署 Token Registry
-npx hardhat run scripts/deploy-token-registry.ts --network sepolia
-# 输出 TitleEscrowFactory 与 TokenRegistry 地址
-
-# 2. 将 TokenRegistry 地址填入 .env
-# TOKEN_REGISTRY_ADDRESS=0x...
-
-# 3. 铸造可转让记录
-npx hardhat run scripts/mint-transferable.ts --network sepolia
+npx hardhat run scripts/mint-official-sepolia.ts --network sepolia
 ```
 
-> 注意：`hardhat run --network hardhat` 每次都会启动一个全新的临时网络，因此本地分步执行时地址会失效；请使用 `demo:local` 或启动 `hardhat node`。
+当前示例铸造结果：
 
-## Sepolia 测试网
+| 项目 | 值 |
+|---|---|
+| Token Registry | `0x33F0Bfd8Ce215e34EA6776f3312a3428A8752570` |
+| Token ID (文档哈希) | `0x8960dd73b2d1bd3476ddee6cf0a26515675ba279cfbf32711e4ec329a40fb1d6` |
+| TitleEscrow | `0xAf0762951E3B5ce6914D48d4778b919C564184c4` |
 
-```bash
-# 配置 .env
-PRIVATE_KEY=0x...
-SEPOLIA_RPC=https://sepolia.infura.io/v3/YOUR_KEY
+## 源码验证
 
-npx hardhat run scripts/deploy-token-registry.ts --network sepolia
-# 填入 TOKEN_REGISTRY_ADDRESS 后继续
-npx hardhat run scripts/mint-transferable.ts --network sepolia
-```
+TitleEscrowFactory 已在 Etherscan Sepolia 自动验证。
 
-## 关键文件
+TradeTrustToken 由于 npm 发布包与 GitHub tag 的依赖版本差异，hardhat-verify 自动匹配未成功；其完整源码已公开在 [TradeTrust/token-registry](https://github.com/TradeTrust/token-registry)，可通过 Etherscan 的 "Verify via flattened source" 手动提交验证。
 
-- `scripts/deploy-token-registry.ts`：部署 Token Registry。
-- `scripts/mint-transferable.ts`：签名 W3C VC 并 mint（需已部署地址）。
-- `scripts/deploy-and-mint.ts`：部署 + 铸造一键脚本。
-- `scripts/verify-document.ts`：W3C 签名验证示例（需要可解析的 DID 或自定义 documentLoader）。
-- `test/TokenRegistry.test.ts`：端到端测试。
+## 与最小 UUPS 实现的对比
+
+详见 `knowledge/docs/09-official-vs-custom.md`。
+
+核心差异一句话：
+
+- **官方 Token Registry**：每份文档是一个 ERC-721 SBT token，由 Registry 自动创建 TitleEscrow；身份验证依赖 DNS/DID；功能完整、生产级。
+- **本工程最小 UUPS 实现**：用独立的 `DocumentRegistry` 记录文档签发状态，用独立的 `DocumentEscrow` 管理 beneficiary/holder；无 SBT、无 DNS/DID，仅用于理解底层机制。

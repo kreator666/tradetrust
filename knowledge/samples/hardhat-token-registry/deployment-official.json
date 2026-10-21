@@ -1,0 +1,6 @@
+{
+  "network": "sepolia",
+  "titleEscrowFactory": "0x1a042Cd4e71a958c62B86c76e4A3FE010EF7d3f7",
+  "tokenRegistry": "0x33F0Bfd8Ce215e34EA6776f3312a3428A8752570",
+  "deployer": "0xfEfd84C7e1c225EBA02DCaA3A822e648ADe23766"
+}

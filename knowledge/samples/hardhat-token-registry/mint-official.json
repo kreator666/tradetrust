@@ -1,0 +1,9 @@
+{
+  "network": "sepolia",
+  "tokenRegistry": "0x33F0Bfd8Ce215e34EA6776f3312a3428A8752570",
+  "tokenId": "0x8960dd73b2d1bd3476ddee6cf0a26515675ba279cfbf32711e4ec329a40fb1d6",
+  "beneficiary": "0xfEfd84C7e1c225EBA02DCaA3A822e648ADe23766",
+  "holder": "0xfEfd84C7e1c225EBA02DCaA3A822e648ADe23766",
+  "titleEscrow": "0xAf0762951E3B5ce6914D48d4778b919C564184c4",
+  "mintTxHash": "0x0ce1534267a7642b7d888e937efacfe52f5402ed3ca7baa12e3c950f5edc1bd4"
+}

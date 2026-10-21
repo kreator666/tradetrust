@@ -11,12 +11,16 @@
     "demo:local": "hardhat run scripts/deploy-and-mint.ts --network hardhat"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-verify": "^2.1.3",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.0",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.10.4",
     "chai": "^4.3.10",
     "hardhat": "^2.22.15",
+    "hardhat-dependency-compiler": "^1.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
