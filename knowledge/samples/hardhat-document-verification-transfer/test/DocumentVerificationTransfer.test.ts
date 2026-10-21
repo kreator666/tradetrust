@@ -202,6 +202,67 @@ describe("UUPS Document Verification & Transfer", function () {
       ).to.be.revertedWithCustomError(EscrowFactory, "DocumentNotIssued");
     });
 
+    it("should register escrow in registry and query by document hash", async () => {
+      const { registry, escrow, documentHash } = await loadFixture(deployFixture);
+      const escrowAddr = await escrow.getAddress();
+
+      await expect(registry.registerEscrow(escrowAddr, documentHash))
+        .to.emit(registry, "EscrowRegistered")
+        .withArgs(documentHash, escrowAddr);
+
+      expect(await registry.registeredEscrow(escrowAddr)).to.equal(true);
+      const list = await registry.escrowsByDocumentList(documentHash);
+      expect(list).to.include(escrowAddr);
+    });
+
+    it("should reject registerEscrow for unissued document", async () => {
+      const { registry, escrow } = await loadFixture(deployFixture);
+      const escrowAddr = await escrow.getAddress();
+      const hash = ethers.keccak256(ethers.toUtf8Bytes("not-issued"));
+
+      await expect(registry.registerEscrow(escrowAddr, hash)).to.be.revertedWithCustomError(
+        registry,
+        "DocumentNotIssued"
+      );
+    });
+
+    it("should reject duplicate escrow registration", async () => {
+      const { registry, escrow, documentHash } = await loadFixture(deployFixture);
+      const escrowAddr = await escrow.getAddress();
+      await (await registry.registerEscrow(escrowAddr, documentHash)).wait();
+
+      await expect(registry.registerEscrow(escrowAddr, documentHash)).to.be.revertedWithCustomError(
+        registry,
+        "EscrowAlreadyRegistered"
+      );
+    });
+
+    it("should reject escrow pointing to wrong registry", async () => {
+      const { admin, beneficiary, holder } = await loadFixture(deployFixture);
+      const OtherRegistryFactory = await ethers.getContractFactory("DocumentRegistry");
+      const otherRegistry = (await upgrades.deployProxy(
+        OtherRegistryFactory,
+        [admin.address],
+        { kind: "uups" }
+      )) as any;
+      await otherRegistry.waitForDeployment();
+
+      const hash = ethers.keccak256(ethers.toUtf8Bytes("other-doc"));
+      await (await otherRegistry.connect(admin).grantRole(await otherRegistry.ISSUER_ROLE(), admin.address)).wait();
+      await (await otherRegistry.connect(admin).issue(hash)).wait();
+
+      const EscrowFactory = await ethers.getContractFactory("DocumentEscrow");
+      const escrow = (await upgrades.deployProxy(
+        EscrowFactory,
+        [await otherRegistry.getAddress(), hash, beneficiary.address, holder.address, admin.address],
+        { kind: "uups" }
+      )) as any;
+      await escrow.waitForDeployment();
+
+      const { registry, documentHash } = await loadFixture(deployFixture);
+      await expect(registry.registerEscrow(await escrow.getAddress(), documentHash)).to.be.reverted;
+    });
+
     it("should upgrade to V2 and preserve state", async () => {
       const { escrow, beneficiary, holder } = await loadFixture(deployFixture);
       const V2Factory = await ethers.getContractFactory("DocumentEscrowV2");

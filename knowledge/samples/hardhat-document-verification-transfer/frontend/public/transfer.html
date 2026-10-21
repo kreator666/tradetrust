@@ -29,6 +29,11 @@
     .guide ul { margin: 6px 0; padding-left: 18px; }
     .guide li { margin-bottom: 4px; }
     .guide code { background: #dbeafe; padding: 1px 4px; border-radius: 4px; }
+    .escrow-list { margin-top: 12px; }
+    .escrow-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
+    .escrow-item code { font-family: monospace; font-size: 12px; }
+    .escrow-item button { margin: 0; padding: 6px 12px; font-size: 12px; }
+    .escrow-item .meta { color: #6b7280; font-size: 11px; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -72,10 +77,51 @@
       </ul>
     </div>
 
-    <label for="escrow">DocumentEscrow 地址</label>
-    <input id="escrow" type="text" placeholder="0x..." />
+    <div class="section">
+      <h3>创建新 Escrow</h3>
+      <p class="muted">每份已签发文档都需要一个独立的 Escrow。填写以下信息，由后端使用部署账户代为部署。</p>
 
-    <button id="load">加载 Escrow</button>
+      <label for="newDocHash">文档哈希（bytes32）</label>
+      <input id="newDocHash" type="text" placeholder="0x..." />
+      <input id="newDocFile" type="file" style="margin-top:8px;" />
+      <button id="computeNewDocHash" type="button">从文件计算哈希</button>
+
+      <div class="row">
+        <div>
+          <label for="newBeneficiaryAddr">受益人地址</label>
+          <input id="newBeneficiaryAddr" type="text" placeholder="0x..." />
+        </div>
+        <div>
+          <label for="newHolderAddr">持有人地址</label>
+          <input id="newHolderAddr" type="text" placeholder="0x..." />
+        </div>
+      </div>
+
+      <label for="newAdminAddr">管理员地址（拥有升级权限）</label>
+      <input id="newAdminAddr" type="text" placeholder="0x..." />
+
+      <button id="createEscrow" type="button">创建 Escrow</button>
+    </div>
+
+    <div class="section">
+      <h3>按文档哈希查询 Escrow 列表</h3>
+      <p class="muted">Registry 会记录每份文档哈希对应的所有 DocumentEscrow 地址。</p>
+      <label for="queryDocHash">文档哈希（bytes32）</label>
+      <input id="queryDocHash" type="text" placeholder="0x..." />
+      <input id="queryDocFile" type="file" style="margin-top:8px;" />
+      <button id="computeQueryDocHash" type="button">从文件计算哈希</button>
+      <button id="queryEscrows" type="button">查询 Escrow 列表</button>
+      <div class="escrow-list" id="queryEscrowList"></div>
+    </div>
+
+    <div class="section">
+      <h3>加载 Escrow</h3>
+      <label for="escrow">DocumentEscrow 地址</label>
+      <input id="escrow" type="text" placeholder="0x..." />
+      <button id="load">加载 Escrow</button>
+
+      <div class="escrow-list" id="escrowList"></div>
+    </div>
 
     <div class="section">
       <h3>当前状态</h3>
@@ -110,7 +156,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
-  <script src="js/common.js?v=9"></script>
+  <script src="js/common.js?v=11"></script>
   <script>
     const walletStatus = document.getElementById('walletStatus');
 
@@ -130,6 +176,19 @@
       transferOwners: document.getElementById('transferOwners'),
       surrender: document.getElementById('surrender'),
       result: document.getElementById('result'),
+      newDocHash: document.getElementById('newDocHash'),
+      newDocFile: document.getElementById('newDocFile'),
+      computeNewDocHash: document.getElementById('computeNewDocHash'),
+      newBeneficiaryAddr: document.getElementById('newBeneficiaryAddr'),
+      newHolderAddr: document.getElementById('newHolderAddr'),
+      newAdminAddr: document.getElementById('newAdminAddr'),
+      createEscrow: document.getElementById('createEscrow'),
+      escrowList: document.getElementById('escrowList'),
+      queryDocHash: document.getElementById('queryDocHash'),
+      queryDocFile: document.getElementById('queryDocFile'),
+      computeQueryDocHash: document.getElementById('computeQueryDocHash'),
+      queryEscrows: document.getElementById('queryEscrows'),
+      queryEscrowList: document.getElementById('queryEscrowList'),
     };
 
     let escrowContract = null;
@@ -204,6 +263,7 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
 已归还: ${surrendered}
         `;
         setButtons(WALLET.connected && (isBeneficiary || isHolder));
+        saveEscrow({ address: addr, documentHash, beneficiary, holder, admin: '-' });
         showResult('加载成功', true);
       } catch (e) {
         showResult(`加载失败：${e.message}`, false);
@@ -232,13 +292,145 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
     els.transferOwners.addEventListener('click', () => sendTx('transferOwners', [els.newBeneficiary.value.trim(), els.newHolder.value.trim()], '已同时转让受益人与持有人'));
     els.surrender.addEventListener('click', () => sendTx('surrender', [], '已归还文档'));
 
+    function getSavedEscrows() {
+      try {
+        return JSON.parse(localStorage.getItem('ttEscrows') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveEscrow(item) {
+      const list = getSavedEscrows();
+      const exists = list.find((x) => x.address.toLowerCase() === item.address.toLowerCase());
+      if (!exists) {
+        list.unshift(item);
+        localStorage.setItem('ttEscrows', JSON.stringify(list.slice(0, 20)));
+      }
+      renderEscrowList();
+    }
+
+    function renderEscrowList() {
+      const list = getSavedEscrows();
+      if (list.length === 0) {
+        els.escrowList.innerHTML = '<div class="muted">暂无最近加载的 Escrow</div>';
+        return;
+      }
+      els.escrowList.innerHTML = '<div class="muted">最近加载/创建的 Escrow（仅保存在本机浏览器）：</div>' +
+        list.map((item) => `
+          <div class="escrow-item">
+            <div>
+              <code>${short(item.address)}</code>
+              <div class="meta">文档哈希: ${short(item.documentHash)} | beneficiary: ${short(item.beneficiary)} | holder: ${short(item.holder)}</div>
+            </div>
+            <button type="button" data-addr="${item.address}">加载</button>
+          </div>
+        `).join('');
+      els.escrowList.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          els.escrow.value = btn.dataset.addr;
+          els.load.click();
+        });
+      });
+    }
+
+    els.computeNewDocHash.addEventListener('click', async () => {
+      const file = els.newDocFile.files[0];
+      if (!file) { alert('请先选择文件'); return; }
+      const hash = await hashFile(file);
+      els.newDocHash.value = hash;
+    });
+
+    els.computeQueryDocHash.addEventListener('click', async () => {
+      const file = els.queryDocFile.files[0];
+      if (!file) { alert('请先选择文件'); return; }
+      const hash = await hashFile(file);
+      els.queryDocHash.value = hash;
+    });
+
+    els.queryEscrows.addEventListener('click', async () => {
+      const documentHash = els.queryDocHash.value.trim();
+      if (!documentHash || documentHash.length !== 66) {
+        alert('请输入有效的文档哈希');
+        return;
+      }
+      try {
+        const provider = getReadProvider();
+        const registry = getRegistryContract(provider, CONFIG.registry);
+        const list = await registry.escrowsByDocument(documentHash);
+        if (list.length === 0) {
+          els.queryEscrowList.innerHTML = '<div class="muted">该文档哈希暂无已注册的 Escrow</div>';
+        } else {
+          els.queryEscrowList.innerHTML = '<div class="muted">共 ' + list.length + ' 个 Escrow：</div>' +
+            list.map((addr, i) => `
+              <div class="escrow-item">
+                <div>
+                  <code>${short(addr)}</code>
+                  <div class="meta">#${i + 1}</div>
+                </div>
+                <button type="button" data-addr="${addr}">加载</button>
+              </div>
+            `).join('');
+          els.queryEscrowList.querySelectorAll('button').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              els.escrow.value = btn.dataset.addr;
+              els.load.click();
+              window.scrollTo({ top: document.getElementById('escrow').offsetTop - 80, behavior: 'smooth' });
+            });
+          });
+        }
+      } catch (e) {
+        showResult(`查询失败：${e.message}`, false);
+      }
+    });
+
+    els.createEscrow.addEventListener('click', async () => {
+      const documentHash = els.newDocHash.value.trim();
+      const beneficiary = els.newBeneficiaryAddr.value.trim();
+      const holder = els.newHolderAddr.value.trim();
+      const admin = els.newAdminAddr.value.trim();
+      if (!documentHash || !beneficiary || !holder || !admin) {
+        alert('请填写完整信息');
+        return;
+      }
+      els.createEscrow.disabled = true;
+      try {
+        const res = await fetch('/api/deploy-escrow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentHash, beneficiary, holder, admin }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          els.escrow.value = data.escrow;
+          saveEscrow({
+            address: data.escrow,
+            documentHash: data.documentHash,
+            beneficiary: data.beneficiary,
+            holder: data.holder,
+            admin: data.admin,
+          });
+          showResult(`Escrow 创建成功：${data.escrow}\n交易：${data.txHash}`, true);
+          await els.load.click();
+        } else {
+          showResult(`创建失败：${data.error}`, false);
+        }
+      } catch (e) {
+        showResult(`创建失败：${e.message}`, false);
+      } finally {
+        els.createEscrow.disabled = false;
+      }
+    });
+
     document.addEventListener('DOMContentLoaded', async () => {
       await window.configReady;
       updateWalletStatus();
+      renderEscrowList();
       if (CONFIG.escrow) els.escrow.value = CONFIG.escrow;
       if (CONFIG.deployer) {
         const deployerEl = document.getElementById('deployer');
         if (deployerEl) deployerEl.textContent = CONFIG.deployer;
+        els.newAdminAddr.value = CONFIG.deployer;
       }
     });
   </script>

@@ -42,6 +42,10 @@ async function main() {
   const escrowAddress = await escrow.getAddress();
   console.log("DocumentEscrow proxy:", escrowAddress);
 
+  // 将 Escrow 注册到 Registry，建立文档哈希与 Escrow 的链上映射
+  await (await registry.registerEscrow(escrowAddress, documentHash)).wait();
+  console.log("Escrow registered in Registry for document:", documentHash);
+
   const deployment = {
     network: "sepolia",
     registry: registryAddress,

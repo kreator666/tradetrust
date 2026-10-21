@@ -30,8 +30,13 @@ async function main() {
     { kind: "uups" }
   );
   await proxy.waitForDeployment();
+  const proxyAddress = await proxy.getAddress();
 
-  console.log("DocumentEscrow proxy deployed to:", await proxy.getAddress());
+  // 注册到 Registry
+  await (await registry.registerEscrow(proxyAddress, documentHash)).wait();
+  console.log("Escrow registered in Registry for document:", documentHash);
+
+  console.log("DocumentEscrow proxy deployed to:", proxyAddress);
   console.log("Registry:", registryAddress);
   console.log("Document hash:", documentHash);
   console.log("Beneficiary:", beneficiary.address);

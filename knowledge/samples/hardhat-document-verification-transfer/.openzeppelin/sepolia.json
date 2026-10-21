@@ -2,20 +2,20 @@
   "manifestVersion": "3.2",
   "proxies": [
     {
-      "address": "0xFFeBB48F2b092D8FD74911D6C04465E0CfcF4B59",
-      "txHash": "0xe0532b7a52c30e8c80306e55a365f4e40f461036715e8c9369c12312875acc67",
+      "address": "0x7Bce249b5c645F294BABB7cd80E943b757b4f558",
+      "txHash": "0xa83e014de02a80df1798e8eb8fa46d1a9df3ddd41d8ebba11f2efbf66ab257f8",
       "kind": "uups"
     },
     {
-      "address": "0xc81fB8f52C4d88C3f0281349D04fc91aea07aeD7",
-      "txHash": "0xb80d0e5a1c796c6f31e32799e91a951710dee24cca505729929dde286267ff35",
+      "address": "0x966a180D82923ec8871F19B4176a96588B388b1A",
+      "txHash": "0xea0eee227277ec78790f75aecd5264767de84d9f38f04f833050db78a3efac2f",
       "kind": "uups"
     }
   ],
   "impls": {
-    "d1daaed5b085d3748a0cb142aec8afa11a9e3ecd52af53669b2a68327b2e40b5": {
-      "address": "0x2c68ced45ac4d72Df638021fbB605F3EE5AD7B3b",
-      "txHash": "0x52a695590ee84eacf8df63cf24bee81a829d5e46f3870d6237139c73e96a0f02",
+    "97585c2190dfba7cd3b32c1c60d120e44e171704bd9d296f61081cab7c9b513b": {
+      "address": "0xEB91b8073d31565180ac7938F4BD9cc883031644",
+      "txHash": "0xb6dfda284905dbef155cf3c65ebbdceae43025fe9c2ba4c05a00b4ed95344aaf",
       "layout": {
         "solcVersion": "0.8.28",
         "storage": [
@@ -23,9 +23,25 @@
             "label": "documents",
             "offset": 0,
             "slot": "0",
-            "type": "t_mapping(t_bytes32,t_struct(Document)2602_storage)",
+            "type": "t_mapping(t_bytes32,t_struct(Document)2604_storage)",
             "contract": "DocumentRegistry",
-            "src": "contracts\\DocumentRegistry.sol:33"
+            "src": "contracts\\DocumentRegistry.sol:36"
+          },
+          {
+            "label": "escrowsByDocument",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_bytes32,t_array(t_address)dyn_storage)",
+            "contract": "DocumentRegistry",
+            "src": "contracts\\DocumentRegistry.sol:39"
+          },
+          {
+            "label": "registeredEscrow",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "DocumentRegistry",
+            "src": "contracts\\DocumentRegistry.sol:42"
           }
         ],
         "types": {
@@ -113,7 +129,11 @@
             "label": "uint64",
             "numberOfBytes": "8"
           },
-          "t_enum(Status)2592": {
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_enum(Status)2594": {
             "label": "enum DocumentRegistry.Status",
             "members": [
               "None",
@@ -122,16 +142,20 @@
             ],
             "numberOfBytes": "1"
           },
-          "t_mapping(t_bytes32,t_struct(Document)2602_storage)": {
+          "t_mapping(t_bytes32,t_array(t_address)dyn_storage)": {
+            "label": "mapping(bytes32 => address[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(Document)2604_storage)": {
             "label": "mapping(bytes32 => struct DocumentRegistry.Document)",
             "numberOfBytes": "32"
           },
-          "t_struct(Document)2602_storage": {
+          "t_struct(Document)2604_storage": {
             "label": "struct DocumentRegistry.Document",
             "members": [
               {
                 "label": "status",
-                "type": "t_enum(Status)2592",
+                "type": "t_enum(Status)2594",
                 "offset": 0,
                 "slot": "0"
               },
@@ -200,8 +224,8 @@
       }
     },
     "a676a9d37cde39db4e263cde6a7a18171dcd39a2493dca97c56b5ba1c68fc4d7": {
-      "address": "0x2be42B012EecCe3B5Db4dB49253034e6181806f4",
-      "txHash": "0xc2fc7d63d0979bc09ef921b630f7d3e91d30d99943299f9404314fe375ead050",
+      "address": "0xB5A30C417CFe5DC697e9D38539C57af1d1C58c6a",
+      "txHash": "0xc358481689cc14cafc14394523c19f55dbbc12cf1eaf7aa7b69c7a6a5280151b",
       "layout": {
         "solcVersion": "0.8.28",
         "storage": [
@@ -209,7 +233,7 @@
             "label": "registry",
             "offset": 0,
             "slot": "0",
-            "type": "t_contract(IDocumentRegistry)2945",
+            "type": "t_contract(IDocumentRegistry)3075",
             "contract": "DocumentEscrow",
             "src": "contracts\\DocumentEscrow.sol:17"
           },
@@ -305,7 +329,7 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IDocumentRegistry)2945": {
+          "t_contract(IDocumentRegistry)3075": {
             "label": "contract IDocumentRegistry",
             "numberOfBytes": "20"
           }
