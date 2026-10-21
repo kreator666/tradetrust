@@ -8,7 +8,8 @@
 DocumentRegistry (UUPS proxy)
     ├── issue(documentHash)
     ├── revoke(documentHash)
-    └── verify(documentHash)
+    ├── verify(documentHash)
+    └── registerEscrow(escrow, documentHash)
 
 DocumentEscrow (UUPS proxy)
     ├── 引用 DocumentRegistry
@@ -24,6 +25,9 @@ DocumentEscrow (UUPS proxy)
   - `REVOKER_ROLE`：撤销文档。
 - **状态**：`None` / `Issued` / `Revoked`。
 - **暂停**：集成 `PausableUpgradeable`。
+- **Escrow 映射**：
+  - `escrowsByDocument[documentHash]` 记录每份文档对应的所有 DocumentEscrow 地址。
+  - `registerEscrow(escrow, documentHash)` 会校验 Escrow 指向本 Registry 且 documentHash 匹配，只有已签发文档才能注册 Escrow。
 
 ## DocumentEscrow
 
@@ -37,6 +41,12 @@ DocumentEscrow (UUPS proxy)
   - `nominateHolder` → `transferHolder`
   - `transferOwners`（要求调用者同时是 beneficiary 与 holder）
 - **归还**：`surrender()` 标记 Escrow 为已归还，禁止后续转让。
+
+## 链上 Registry 记录 Escrow 映射
+
+每一份可转让文档可以对应多个 Escrow（例如不同交易方、不同托管场景）。Registry 通过 `registerEscrow` 将 Escrow 地址与文档哈希绑定，任何人都可以通过 `escrowsByDocumentList(documentHash)` 查询该文档的所有 Escrow 地址。
+
+部署脚本和前端 `/api/deploy-escrow` 在创建 Escrow 后会自动调用 `registerEscrow`，无需额外手动操作。
 
 ## 样例位置
 

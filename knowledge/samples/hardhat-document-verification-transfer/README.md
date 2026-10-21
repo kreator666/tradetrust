@@ -6,11 +6,13 @@
 
 | 合约 | 作用 |
 |------|------|
-| `DocumentRegistry` | UUPS 可升级文档注册表。支持对文档哈希进行 `issue`、`revoke`、`verify`，并基于 `AccessControlUpgradeable` 进行角色管理。 |
+| `DocumentRegistry` | UUPS 可升级文档注册表。支持对文档哈希进行 `issue`、`revoke`、`verify`，并基于 `AccessControlUpgradeable` 进行角色管理；支持将 `DocumentEscrow` 注册到文档哈希的映射中。 |
 | `DocumentRegistryV2` | V2 实现，仅新增 `version()` 用于演示 UUPS 升级，不修改存储布局。 |
 | `DocumentEscrow` | UUPS 可升级文档转移托管合约。管理单份文档的 `beneficiary`（受益人）与 `holder`（持有人），支持提名转让、持有人转让、同时转让、归还（surrender）。 |
 | `DocumentEscrowV2` | V2 实现，仅新增 `version()` 用于演示 UUPS 升级。 |
 | `IDocumentRegistry` | 最小接口，供 Escrow 初始化时校验文档是否已签发。 |
+| `IDocumentEscrow` | 最小接口，供 Registry 注册 Escrow 时校验其指向的 Registry 与文档哈希。 |
+| `Imports` | 辅助合约，确保 Hardhat 编译生成 `ERC1967Proxy` artifact，供后端 `/api/deploy-escrow` 使用。 |
 
 ## 快速开始
 
@@ -37,6 +39,8 @@ export DOCUMENT_HASH=<可选，默认使用 keccak256("demo-doc")>
 npx hardhat run scripts/deploy-escrow.ts --network hardhat
 ```
 
+脚本会自动将新 Escrow 注册到 Registry。
+
 ### 3. 升级 DocumentRegistry 到 V2
 
 ```bash
@@ -50,9 +54,22 @@ npx hardhat run scripts/upgrade-registry.ts --network hardhat
 - **角色管理**：Registry 使用 `ISSUER_ROLE` / `REVOKER_ROLE` 分离签发与撤销权限。
 - **暂停机制**：Registry 集成 `PausableUpgradeable`，管理员可在紧急情况下暂停 `issue`/`revoke`。
 - **Escrow 初始化校验**：Escrow 初始化时会调用 `IDocumentRegistry.isValid()`，确保只有已签发文档才能进入转移流程。
+- **链上 Escrow 映射**：Registry 记录每个文档哈希对应的所有 Escrow 地址，通过 `escrowsByDocumentList(documentHash)` 可查询。
 - **归还（Surrender）**：`surrender()` 将 Escrow 标记为已归还，后续所有转让操作将被禁止。
 
 ## Sepolia 测试网部署
+
+当前部署地址（示例）：
+
+| 项目 | 地址 |
+|------|------|
+| DocumentRegistry Proxy | `0x7Bce249b5c645F294BABB7cd80E943b757b4f558` |
+| DocumentEscrow Proxy | `0x966a180D82923ec8871F19B4176a96588B388b1A` |
+| Registry Implementation | `0xEB91b8073d31565180ac7938F4BD9cc883031644` |
+| Escrow Implementation | `0xB5A30C417CFe5DC697e9D38539C57af1d1C58c6a` |
+| 演示文档哈希 | `0x30f96a57b427d0ffe758e59c9d519014894477aa1abfd325674bc5f61f7926e8` |
+
+> 注意：重新部署会生成新的 `deployment.json`，实际地址以本地文件为准。
 
 1. 复制 `.env.example` 为 `.env` 并填入：
    - `SEPOLIA_RPC`：Sepolia RPC URL，例如 `https://ethereum-sepolia-rpc.publicnode.com`
@@ -66,7 +83,7 @@ npx hardhat run scripts/upgrade-registry.ts --network hardhat
 npm run deploy:sepolia
 ```
 
-脚本会部署 `DocumentRegistry` 与 `DocumentEscrow` 的 UUPS 代理，签发一份示例文档，并将地址写入 `deployment.json`。
+脚本会部署 `DocumentRegistry` 与 `DocumentEscrow` 的 UUPS 代理，签发一份示例文档，将 Escrow 注册到 Registry，并将地址写入 `deployment.json`。
 
 ### 4. 验证实现合约源码（Etherscan Sepolia）
 
@@ -83,9 +100,10 @@ npm run verify:sepolia
 基于 Node + Express 的多页面前端，包含：
 
 - **首页** (`/`)：展示部署配置与功能入口。
-- **签发文档** (`/issue.html`)：上传文件 → 计算 keccak256 哈希 → 通过本地部署账户写入 DocumentRegistry。
+- **签发文档** (`/issue.html`)：上传文件 → 计算 keccak256 哈希 → 通过钱包签名或本地部署账户写入 DocumentRegistry。
 - **验证文档** (`/verify.html`)：上传文件 → 计算哈希 → 查询链上签发/撤销状态。
-- **转移文档** (`/transfer.html`)：连接 MetaMask，对 DocumentEscrow 执行 beneficiary / holder 提名、转让与归还。
+- **转移文档** (`/transfer.html`)：连接 MetaMask，对 DocumentEscrow 执行 beneficiary / holder 提名、转让与归还；支持按文档哈希查询所有已注册 Escrow。
+- **权限管理** (`/admin.html`)：查看/授权/撤销 ISSUER_ROLE。
 
 ```bash
 npm run frontend
@@ -97,3 +115,4 @@ npm run frontend
 
 - Registry 的单条签发、批量签发、撤销、未签发撤销回滚、暂停/恢复、UUPS 升级到 V2。
 - Escrow 的持有人转让、受益人提名转让、同时转让、归还、未签发文档创建回滚、UUPS 升级到 V2。
+- Registry `registerEscrow` 的成功、未签发文档、重复注册、错误 Registry 指向等场景。
