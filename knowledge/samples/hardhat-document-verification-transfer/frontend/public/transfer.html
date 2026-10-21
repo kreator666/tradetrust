@@ -80,6 +80,7 @@
     <div class="section">
       <h3>创建新 Escrow</h3>
       <p class="muted">每份已签发文档都需要一个独立的 Escrow。填写以下信息，由后端使用部署账户代为部署。</p>
+      <p class="warning">⚠️ 前提：该文档哈希必须已经在 Registry 中签发。若未签发，请先到 <a href="issue.html">签发文档</a> 页上传同一文件并签发。</p>
 
       <label for="newDocHash">文档哈希（bytes32）</label>
       <input id="newDocHash" type="text" placeholder="0x..." />
@@ -442,6 +443,11 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
           });
           showResult(`Escrow 创建成功：${data.escrow}\n部署交易：${data.txHash}\n注册交易：${data.registerTxHash}`, true);
           await els.load.click();
+        } else if (data.error && data.error.includes('文档哈希未在 Registry 中签发')) {
+          showResult(
+            `创建失败：${data.error}\n\n请先前往「签发文档」页上传同一文件并签发，再回来创建 Escrow。`,
+            false
+          );
         } else {
           showResult(`创建失败：${data.error}`, false);
         }
