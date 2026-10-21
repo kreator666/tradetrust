@@ -85,6 +85,7 @@
       <input id="newDocHash" type="text" placeholder="0x..." />
       <input id="newDocFile" type="file" style="margin-top:8px;" />
       <button id="computeNewDocHash" type="button">从文件计算哈希</button>
+      <span id="newDocHashStatus" class="muted"></span>
 
       <div class="row">
         <div>
@@ -156,7 +157,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
-  <script src="js/common.js?v=11"></script>
+  <script src="js/common.js?v=12"></script>
   <script>
     const walletStatus = document.getElementById('walletStatus');
 
@@ -179,6 +180,7 @@
       newDocHash: document.getElementById('newDocHash'),
       newDocFile: document.getElementById('newDocFile'),
       computeNewDocHash: document.getElementById('computeNewDocHash'),
+      newDocHashStatus: document.getElementById('newDocHashStatus'),
       newBeneficiaryAddr: document.getElementById('newBeneficiaryAddr'),
       newHolderAddr: document.getElementById('newHolderAddr'),
       newAdminAddr: document.getElementById('newAdminAddr'),
@@ -334,12 +336,22 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
       });
     }
 
-    els.computeNewDocHash.addEventListener('click', async () => {
+    async function computeNewDocHashFromFile() {
       const file = els.newDocFile.files[0];
-      if (!file) { alert('请先选择文件'); return; }
-      const hash = await hashFile(file);
-      els.newDocHash.value = hash;
-    });
+      if (!file) return;
+      els.newDocHashStatus.textContent = '正在计算哈希...';
+      try {
+        const hash = await hashFile(file);
+        els.newDocHash.value = hash;
+        els.newDocHashStatus.textContent = `已计算: ${short(hash)}`;
+      } catch (e) {
+        els.newDocHashStatus.textContent = `计算失败: ${e.message}`;
+        console.error(e);
+      }
+    }
+
+    els.newDocFile.addEventListener('change', computeNewDocHashFromFile);
+    els.computeNewDocHash.addEventListener('click', computeNewDocHashFromFile);
 
     els.computeQueryDocHash.addEventListener('click', async () => {
       const file = els.queryDocFile.files[0];
@@ -357,7 +369,7 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
       try {
         const provider = getReadProvider();
         const registry = getRegistryContract(provider, CONFIG.registry);
-        const list = await registry.escrowsByDocument(documentHash);
+        const list = await registry.escrowsByDocumentList(documentHash);
         if (list.length === 0) {
           els.queryEscrowList.innerHTML = '<div class="muted">该文档哈希暂无已注册的 Escrow</div>';
         } else {
@@ -389,18 +401,36 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
       const beneficiary = els.newBeneficiaryAddr.value.trim();
       const holder = els.newHolderAddr.value.trim();
       const admin = els.newAdminAddr.value.trim();
-      if (!documentHash || !beneficiary || !holder || !admin) {
-        alert('请填写完整信息');
+      console.log('createEscrow clicked', { documentHash, beneficiary, holder, admin });
+
+      if (!documentHash) {
+        alert('请填写文档哈希，或选择文件后自动计算');
         return;
       }
+      if (documentHash.length !== 66 || !documentHash.startsWith('0x')) {
+        alert('文档哈希必须是 0x 开头的 66 位十六进制字符串');
+        return;
+      }
+      if (!beneficiary || !holder || !admin) {
+        alert('请填写受益人、持有人和管理员地址');
+        return;
+      }
+      if (!/^0x[0-9a-fA-F]{40}$/.test(beneficiary) || !/^0x[0-9a-fA-F]{40}$/.test(holder) || !/^0x[0-9a-fA-F]{40}$/.test(admin)) {
+        alert('地址格式不正确，必须是 0x 开头的 42 位以太坊地址');
+        return;
+      }
+
       els.createEscrow.disabled = true;
+      showResult('正在提交，请等待...', true);
       try {
         const res = await fetch('/api/deploy-escrow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ documentHash, beneficiary, holder, admin }),
         });
+        console.log('deploy-escrow response status', res.status);
         const data = await res.json();
+        console.log('deploy-escrow response data', data);
         if (data.success) {
           els.escrow.value = data.escrow;
           saveEscrow({
@@ -410,12 +440,13 @@ holder: ${holder} ${isHolder ? '(当前账户)' : ''}<br/>
             holder: data.holder,
             admin: data.admin,
           });
-          showResult(`Escrow 创建成功：${data.escrow}\n交易：${data.txHash}`, true);
+          showResult(`Escrow 创建成功：${data.escrow}\n部署交易：${data.txHash}\n注册交易：${data.registerTxHash}`, true);
           await els.load.click();
         } else {
           showResult(`创建失败：${data.error}`, false);
         }
       } catch (e) {
+        console.error('createEscrow error', e);
         showResult(`创建失败：${e.message}`, false);
       } finally {
         els.createEscrow.disabled = false;
