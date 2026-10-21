@@ -88,18 +88,27 @@
         const provider = getReadProvider();
         const registry = getTokenRegistryContract(provider);
 
-        const exists = await registry.exists(tokenId);
-        if (!exists) {
-          showStatus('该 tokenId 未被铸造（不存在于 Token Registry 中）。', false);
+        let owner, tokenURI;
+        try {
+          [owner, tokenURI] = await Promise.all([
+            registry.ownerOf(tokenId),
+            registry.tokenURI(tokenId).catch(() => ''),
+          ]);
+        } catch (e) {
+          showStatus(`该 tokenId 未被铸造或查询失败：${e.message}`, false);
           return;
         }
 
-        const [owner, tokenURI, beneficiary, holder] = await Promise.all([
-          registry.ownerOf(tokenId),
-          registry.tokenURI(tokenId).catch(() => ''),
-          registry.beneficiaryOf(tokenId).catch(() => 'N/A'),
-          registry.holderOf(tokenId).catch(() => 'N/A'),
-        ]);
+        let beneficiary = 'N/A', holder = 'N/A';
+        try {
+          const escrow = getTitleEscrowContract(provider, owner);
+          [beneficiary, holder] = await Promise.all([
+            escrow.beneficiary(),
+            escrow.holder(),
+          ]);
+        } catch (e) {
+          console.warn('查询 TitleEscrow beneficiary/holder 失败', e);
+        }
 
         showStatus(
           `<strong>验证成功</strong><br/>

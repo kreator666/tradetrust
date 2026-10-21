@@ -88,7 +88,13 @@ app.post("/api/mint", async (req: express.Request, res: express.Response) => {
       return res.status(400).json({ error: "部署账户没有 MINTER_ROLE" });
     }
 
-    const exists = await registry.exists(tokenId);
+    let exists = false;
+    try {
+      await registry.ownerOf(tokenId);
+      exists = true;
+    } catch (e) {
+      exists = false;
+    }
     if (exists) {
       return res.status(400).json({ error: "该 tokenId 已被铸造" });
     }

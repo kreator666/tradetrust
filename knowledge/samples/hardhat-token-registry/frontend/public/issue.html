@@ -139,7 +139,13 @@
           return;
         }
 
-        const exists = await registry.exists(tokenId);
+        let exists = false;
+        try {
+          await registry.ownerOf(tokenId);
+          exists = true;
+        } catch (e) {
+          exists = false;
+        }
         if (exists) {
           show('该 tokenId 已被铸造。', false);
           return;
