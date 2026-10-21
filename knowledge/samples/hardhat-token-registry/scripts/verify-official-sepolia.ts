@@ -1,5 +1,7 @@
-import { run } from "hardhat";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import fs from "fs";
+
+declare const hre: HardhatRuntimeEnvironment;
 import path from "path";
 
 async function main() {
@@ -13,13 +15,13 @@ async function main() {
   console.log("TradeTrustToken:", deployment.tokenRegistry);
 
   console.log("\nVerifying TitleEscrowFactory...");
-  await run("verify:verify", {
+  await hre.run("verify:verify", {
     address: deployment.titleEscrowFactory,
     constructorArguments: [],
   });
 
   console.log("\nVerifying TradeTrustToken...");
-  await run("verify:verify", {
+  await hre.run("verify:verify", {
     address: deployment.tokenRegistry,
     contract: "contracts/TradeTrustToken.sol:TradeTrustToken",
     constructorArguments: [

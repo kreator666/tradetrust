@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>验证与 Endorsement Chain | TradeTrust Official</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="text"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+    button { margin-top: 12px; margin-right: 8px; padding: 10px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .result { margin-top: 16px; padding: 16px; border-radius: 8px; background: #f3f4f6; font-size: 14px; line-height: 1.6; }
+    .result.success { background: #d1fae5; color: #065f46; }
+    .result.error { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .chain-item { padding: 12px; border-left: 3px solid #2563eb; margin-bottom: 10px; background: #f9fafb; border-radius: 4px; }
+    .chain-item .type { font-weight: 600; color: #1e40af; }
+    .chain-item .meta { color: #6b7280; font-size: 12px; margin-top: 4px; }
+    code { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>验证文档与查看 Endorsement Chain</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <p class="muted">上传文件或输入 tokenId（文档哈希），查询其在官方 Token Registry 中的状态、归属及转让历史。</p>
+
+    <label for="file">选择文件（计算 keccak256）</label>
+    <input id="file" type="file" />
+    <button id="compute" type="button">计算哈希</button>
+
+    <label for="tokenId">tokenId / 文档哈希</label>
+    <input id="tokenId" type="text" placeholder="0x..." />
+
+    <button id="verify" type="button">查询状态</button>
+
+    <div id="status"></div>
+    <div id="chain"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=1"></script>
+  <script>
+    const fileInput = document.getElementById('file');
+    const computeBtn = document.getElementById('compute');
+    const tokenIdInput = document.getElementById('tokenId');
+    const verifyBtn = document.getElementById('verify');
+    const statusEl = document.getElementById('status');
+    const chainEl = document.getElementById('chain');
+
+    computeBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) { alert('请先选择文件'); return; }
+      tokenIdInput.value = await hashFile(file);
+    });
+
+    function showStatus(html, success) {
+      statusEl.innerHTML = html;
+      statusEl.className = `result ${success ? 'success' : 'error'}`;
+    }
+
+    function formatRemark(remark) {
+      if (!remark || remark === '0x') return '无';
+      try {
+        const text = ethers.toUtf8String(remark);
+        return text || '无';
+      } catch (e) {
+        return remark;
+      }
+    }
+
+    verifyBtn.addEventListener('click', async () => {
+      const tokenId = tokenIdInput.value.trim();
+      if (!tokenId || tokenId.length !== 66) {
+        alert('请输入有效的 tokenId');
+        return;
+      }
+      statusEl.textContent = '查询中...';
+      statusEl.className = 'result';
+      chainEl.innerHTML = '';
+
+      try {
+        const provider = getReadProvider();
+        const registry = getTokenRegistryContract(provider);
+
+        const exists = await registry.exists(tokenId);
+        if (!exists) {
+          showStatus('该 tokenId 未被铸造（不存在于 Token Registry 中）。', false);
+          return;
+        }
+
+        const [owner, tokenURI, beneficiary, holder] = await Promise.all([
+          registry.ownerOf(tokenId),
+          registry.tokenURI(tokenId).catch(() => ''),
+          registry.beneficiaryOf(tokenId).catch(() => 'N/A'),
+          registry.holderOf(tokenId).catch(() => 'N/A'),
+        ]);
+
+        showStatus(
+          `<strong>验证成功</strong><br/>
+          Token ID: <code>${tokenId}</code><br/>
+          TitleEscrow (token owner): <code>${owner}</code><br/>
+          Beneficiary: <code>${beneficiary}</code><br/>
+          Holder: <code>${holder}</code><br/>
+          Token URI: <code>${tokenURI || '空'}</code>`,
+          true
+        );
+
+        // 简单 endorsement chain：读取 TitleEscrow 事件
+        const escrow = getTitleEscrowContract(provider, owner);
+        const filter = escrow.filters ? escrow.filters.BeneficiaryNominated?.() : null;
+        const logs = filter ? await escrow.queryFilter(filter, 0, 'latest') : [];
+        const allLogs = await escrow.queryFilter({}, 0, 'latest');
+
+        if (allLogs.length === 0) {
+          chainEl.innerHTML = '<div class="result muted">暂无 Endorsement Chain 事件</div>';
+        } else {
+          chainEl.innerHTML = '<h3>Endorsement Chain 事件</h3>' +
+            allLogs.map((log) => {
+              const name = log.fragment ? log.fragment.name : 'Unknown';
+              const args = log.args ? Object.entries(log.args).map(([k, v]) => `${k}: ${v}`).join('<br/>') : '';
+              return `<div class="chain-item">
+                <div class="type">${name}</div>
+                <div>${args}</div>
+                <div class="meta">Block: ${log.blockNumber} | Tx: <a href="https://sepolia.etherscan.io/tx/${log.transactionHash}" target="_blank">${short(log.transactionHash)}</a></div>
+              </div>`;
+            }).join('');
+        }
+      } catch (e) {
+        showStatus(`查询失败：${e.message}`, false);
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      if (CONFIG.mint) tokenIdInput.value = CONFIG.mint.tokenId;
+    });
+  </script>
+</body>
+</html>

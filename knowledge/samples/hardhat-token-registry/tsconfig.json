@@ -9,7 +9,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "types": ["node", "mocha"]
+    "types": ["node", "mocha", "hardhat"]
   },
-  "include": ["./hardhat.config.ts", "./types", "./scripts", "./test"]
+  "include": ["./hardhat.config.ts", "./types", "./scripts", "./test"],
+  "exclude": ["./frontend"]
 }

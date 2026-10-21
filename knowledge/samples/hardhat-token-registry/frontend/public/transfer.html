@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>转让 TitleEscrow | TradeTrust Official</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="text"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+    button { margin-top: 12px; margin-right: 8px; padding: 10px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    button.warning { background: #dc2626; }
+    button.warning:hover { background: #b91c1c; }
+    .result { margin-top: 12px; padding: 12px; border-radius: 6px; background: #f3f4f6; font-size: 13px; line-height: 1.6; }
+    .result.success { background: #d1fae5; color: #065f46; }
+    .result.error { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .section { margin-top: 24px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; }
+    .wallet-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; }
+    .wallet-info { padding: 6px 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; }
+    code { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>转让 / 归还 TitleEscrow</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <div class="wallet-bar">
+      <span id="walletStatus">钱包未连接</span>
+      <button id="connectBtn" type="button">连接钱包</button>
+      <button id="disconnectBtn" type="button" style="display:none; background:#6b7280;">断开</button>
+    </div>
+
+    <div class="section">
+      <h3>加载 TitleEscrow</h3>
+      <label for="titleEscrow">TitleEscrow 地址</label>
+      <input id="titleEscrow" type="text" placeholder="0x..." />
+      <button id="load">加载</button>
+      <div id="info" class="result muted">未加载</div>
+    </div>
+
+    <div class="section">
+      <h3>官方 TitleEscrow 操作</h3>
+      <p class="muted">官方实现支持 nominee 提名机制，以及同时转让、归还、拒绝等操作。</p>
+
+      <label for="nominee">提名人 / 新地址</label>
+      <input id="nominee" type="text" placeholder="0x..." />
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <label for="newBeneficiary">新受益人（transferOwners）</label>
+          <input id="newBeneficiary" type="text" placeholder="0x..." />
+        </div>
+        <div>
+          <label for="newHolder">新持有人（transferOwners）</label>
+          <input id="newHolder" type="text" placeholder="0x..." />
+        </div>
+      </div>
+
+      <button id="nominate" disabled>提名受益人</button>
+      <button id="transferBeneficiary" disabled>转让受益人</button>
+      <button id="transferHolder" disabled>转让持有人</button>
+      <button id="transferOwners" disabled>同时转让受益人与持有人</button>
+      <button id="rejectBeneficiary" disabled class="warning">拒绝受益人转让</button>
+      <button id="rejectHolder" disabled class="warning">拒绝持有人转让</button>
+      <button id="returnToIssuer" disabled class="warning">归还给签发方</button>
+
+      <div id="result"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=1"></script>
+  <script>
+    const walletStatus = document.getElementById('walletStatus');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const titleEscrowInput = document.getElementById('titleEscrow');
+    const loadBtn = document.getElementById('load');
+    const infoEl = document.getElementById('info');
+    const nomineeInput = document.getElementById('nominee');
+    const newBeneficiaryInput = document.getElementById('newBeneficiary');
+    const newHolderInput = document.getElementById('newHolder');
+    const resultEl = document.getElementById('result');
+
+    const buttons = {
+      nominate: document.getElementById('nominate'),
+      transferBeneficiary: document.getElementById('transferBeneficiary'),
+      transferHolder: document.getElementById('transferHolder'),
+      transferOwners: document.getElementById('transferOwners'),
+      rejectBeneficiary: document.getElementById('rejectBeneficiary'),
+      rejectHolder: document.getElementById('rejectHolder'),
+      returnToIssuer: document.getElementById('returnToIssuer'),
+    };
+
+    let currentEscrow = null;
+    let currentInfo = {};
+
+    function updateWalletStatus() {
+      if (WALLET.connected) {
+        walletStatus.innerHTML = `<span class="wallet-info">已连接 ${short(WALLET.address)}</span>`;
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'inline-block';
+      } else {
+        walletStatus.textContent = '钱包未连接';
+        connectBtn.style.display = 'inline-block';
+        disconnectBtn.style.display = 'none';
+      }
+      updateButtons();
+    }
+
+    onWalletUIUpdate(updateWalletStatus);
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        await connectWallet();
+        updateWalletStatus();
+      } catch (e) {
+        alert(`连接失败：${e.message}`);
+      }
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      disconnectWallet();
+      updateWalletStatus();
+      infoEl.textContent = '未加载';
+      currentEscrow = null;
+    });
+
+    function updateButtons() {
+      const enabled = WALLET.connected && currentEscrow;
+      Object.values(buttons).forEach((btn) => (btn.disabled = !enabled));
+    }
+
+    function showResult(msg, success) {
+      resultEl.innerHTML = msg;
+      resultEl.className = `result ${success ? 'success' : 'error'}`;
+    }
+
+    loadBtn.addEventListener('click', async () => {
+      const addr = titleEscrowInput.value.trim();
+      if (!addr) { alert('请输入 TitleEscrow 地址'); return; }
+      const provider = WALLET.connected ? new ethers.BrowserProvider(window.ethereum) : getReadProvider();
+      currentEscrow = getTitleEscrowContract(provider, addr);
+      try {
+        const [registry, tokenId, beneficiary, holder, nominee, active] = await Promise.all([
+          currentEscrow.registry(),
+          currentEscrow.tokenId(),
+          currentEscrow.beneficiary(),
+          currentEscrow.holder(),
+          currentEscrow.nominee().catch(() => '0x0000000000000000000000000000000000000000'),
+          currentEscrow.active(),
+        ]);
+        currentInfo = { registry, tokenId, beneficiary, holder, nominee, active };
+        const signerAddress = WALLET.address;
+        const isBeneficiary = signerAddress && beneficiary.toLowerCase() === signerAddress.toLowerCase();
+        const isHolder = signerAddress && holder.toLowerCase() === signerAddress.toLowerCase();
+        infoEl.innerHTML = `
+          Registry: <code>${registry}</code><br/>
+          Token ID: <code>${tokenId}</code><br/>
+          Beneficiary: <code>${beneficiary}</code> ${isBeneficiary ? '(当前账户)' : ''}<br/>
+          Holder: <code>${holder}</code> ${isHolder ? '(当前账户)' : ''}<br/>
+          Nominee: <code>${nominee}</code><br/>
+          Active: ${active}<br/>
+          操作权限: ${WALLET.connected && (isBeneficiary || isHolder) ? '<span style="color:#065f46;">✓ 可操作</span>' : '<span style="color:#991b1b;">✗ 当前钱包不是 beneficiary 或 holder</span>'}
+        `;
+        updateButtons();
+      } catch (e) {
+        infoEl.innerHTML = `加载失败：${e.message}`;
+        infoEl.className = 'result error';
+        currentEscrow = null;
+        updateButtons();
+      }
+    });
+
+    async function sendTx(fn, args, successMsg) {
+      if (!WALLET.connected || !currentEscrow) return;
+      const addr = titleEscrowInput.value.trim();
+      const signer = await getConnectedSigner();
+      const connected = getTitleEscrowContract(signer, addr);
+      try {
+        const tx = await connected[fn](...(args || []), '0x');
+        await tx.wait();
+        showResult(`${successMsg}<br/>交易：<a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>`, true);
+        await loadBtn.click();
+      } catch (e) {
+        showResult(`交易失败：${e.reason || e.message}`, false);
+      }
+    }
+
+    buttons.nominate.addEventListener('click', () => sendTx('nominate', [nomineeInput.value.trim()], '已提名受益人'));
+    buttons.transferBeneficiary.addEventListener('click', () => sendTx('transferBeneficiary', [nomineeInput.value.trim()], '已转让受益人'));
+    buttons.transferHolder.addEventListener('click', () => sendTx('transferHolder', [nomineeInput.value.trim()], '已转让持有人'));
+    buttons.transferOwners.addEventListener('click', () => sendTx('transferOwners', [newBeneficiaryInput.value.trim(), newHolderInput.value.trim()], '已同时转让受益人与持有人'));
+    buttons.rejectBeneficiary.addEventListener('click', () => sendTx('rejectTransferBeneficiary', [], '已拒绝受益人转让'));
+    buttons.rejectHolder.addEventListener('click', () => sendTx('rejectTransferHolder', [], '已拒绝持有人转让'));
+    buttons.returnToIssuer.addEventListener('click', () => sendTx('returnToIssuer', [], '已归还给签发方'));
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      updateWalletStatus();
+      if (CONFIG.mint) titleEscrowInput.value = CONFIG.mint.titleEscrow;
+    });
+  </script>
+</body>
+</html>

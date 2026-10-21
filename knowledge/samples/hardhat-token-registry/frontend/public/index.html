@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeTrust 官方 Token Registry Demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 24px; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card h3 { margin-top: 0; font-size: 16px; }
+    .card p { margin: 6px 0; font-size: 14px; }
+    .card code { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .feature { display: block; padding: 14px 16px; background: #eff6ff; border-radius: 8px; margin-bottom: 10px; color: #1e40af; font-weight: 600; }
+    .feature:hover { background: #dbeafe; }
+    .warning { background: #fffbeb; color: #92400e; padding: 12px; border-radius: 6px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TradeTrust 官方 Token Registry Demo</h1>
+    <p class="subtitle">基于 @tradetrust-tt/token-registry v5.5.2 的 ERC-721 SBT 可转让记录演示</p>
+
+    <div class="warning">
+      这是官方实现对应的前端页面。如需查看最小 UUPS 实现，请访问
+      <a href="http://localhost:3000">http://localhost:3000</a>。
+    </div>
+
+    <div class="card">
+      <h3>当前 Sepolia 部署</h3>
+      <p>Token Registry: <code id="tokenRegistry">-</code></p>
+      <p>TitleEscrowFactory: <code id="titleEscrowFactory">-</code></p>
+      <p>Deployer: <code id="deployer">-</code></p>
+    </div>
+
+    <div class="card">
+      <h3>示例铸造记录</h3>
+      <p>Token ID: <code id="tokenId">-</code></p>
+      <p>TitleEscrow: <code id="titleEscrow">-</code></p>
+    </div>
+
+    <div class="card">
+      <h3>功能入口</h3>
+      <a class="feature" href="issue.html">📝 签发/铸造可转让记录（Mint）</a>
+      <a class="feature" href="verify.html">🔍 验证文档与查看 Endorsement Chain</a>
+      <a class="feature" href="transfer.html">🔄 转让/归还 TitleEscrow</a>
+      <a class="feature" href="admin.html">🔐 角色权限管理（Minter/Accepter/Restorer）</a>
+    </div>
+
+    <div class="card">
+      <h3>官方实现核心特性</h3>
+      <div class="grid">
+        <div>
+          <p><strong>ERC-721 SBT</strong></p>
+          <p>每份文档对应一个 Soulbound Token，tokenId 即文档哈希。</p>
+        </div>
+        <div>
+          <p><strong>TitleEscrowFactory</strong></p>
+          <p>铸造时自动为每个 token 创建 TitleEscrow 合约。</p>
+        </div>
+        <div>
+          <p><strong>Endorsement Chain</strong></p>
+          <p>链上记录 beneficiary / holder 的完整转让历史。</p>
+        </div>
+        <div>
+          <p><strong>销毁与恢复</strong></p>
+          <p>支持 burn（归还销毁）与 restore（恢复）流程。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=1"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      document.getElementById('tokenRegistry').textContent = CONFIG.tokenRegistry || '未部署';
+      document.getElementById('titleEscrowFactory').textContent = CONFIG.titleEscrowFactory || '未部署';
+      document.getElementById('deployer').textContent = CONFIG.deployer || '-';
+      if (CONFIG.mint) {
+        document.getElementById('tokenId').textContent = CONFIG.mint.tokenId;
+        document.getElementById('titleEscrow').textContent = CONFIG.mint.titleEscrow;
+      } else {
+        document.getElementById('tokenId').textContent = '无';
+        document.getElementById('titleEscrow').textContent = '无';
+      }
+    });
+  </script>
+</body>
+</html>

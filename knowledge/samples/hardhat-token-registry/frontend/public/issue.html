@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>签发/铸造 | TradeTrust Official</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background: #f5f7fa; color: #1f2937; }
+    .container { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h1 { margin-top: 0; font-size: 22px; }
+    a { color: #2563eb; text-decoration: none; }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; font-size: 14px; }
+    input[type="text"], input[type="file"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-family: monospace; }
+    button { margin-top: 16px; margin-right: 8px; padding: 10px 18px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    button.secondary { background: #6b7280; }
+    .result { margin-top: 16px; padding: 16px; border-radius: 8px; background: #f3f4f6; font-size: 14px; line-height: 1.6; }
+    .result.success { background: #d1fae5; color: #065f46; }
+    .result.error { background: #fee2e2; color: #991b1b; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .wallet-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; }
+    .wallet-info { padding: 6px 12px; background: #f3f4f6; border-radius: 6px; font-family: monospace; }
+    .guide { background: #eff6ff; color: #1e40af; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.7; }
+    code { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>签发 / 铸造可转让记录</h1>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <div class="wallet-bar">
+      <span id="walletStatus">钱包未连接</span>
+      <button id="connectBtn" type="button">连接钱包</button>
+    </div>
+
+    <div class="guide">
+      <strong>官方 Token Registry 的签发即铸造（Mint）</strong><br/>
+      每份文档哈希作为 <code>tokenId</code>，铸造时会自动创建对应的 <code>TitleEscrow</code> 合约。
+      TitleEscrow 持有该 token，并记录 <code>beneficiary</code>（受益人）与 <code>holder</code>（持有人）。
+    </div>
+
+    <label for="file">选择文件（将计算 keccak256 作为 tokenId）</label>
+    <input id="file" type="file" />
+    <button id="compute" type="button">计算文档哈希</button>
+
+    <label for="tokenId">或手动输入 tokenId（bytes32）</label>
+    <input id="tokenId" type="text" placeholder="0x..." />
+
+    <label for="beneficiary">受益人地址（beneficiary）</label>
+    <input id="beneficiary" type="text" placeholder="0x..." />
+
+    <label for="holder">持有人地址（holder）</label>
+    <input id="holder" type="text" placeholder="0x..." />
+
+    <label for="remark">备注（remark，可选，最长120字符）</label>
+    <input id="remark" type="text" placeholder="0x 或任意字符串" />
+
+    <button id="mintWallet" type="button" disabled>使用钱包签名铸造</button>
+    <button id="mintBackend" type="button" class="secondary">使用本地部署账户代铸</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="js/common.js?v=1"></script>
+  <script>
+    const walletStatus = document.getElementById('walletStatus');
+    const connectBtn = document.getElementById('connectBtn');
+    const fileInput = document.getElementById('file');
+    const computeBtn = document.getElementById('compute');
+    const tokenIdInput = document.getElementById('tokenId');
+    const beneficiaryInput = document.getElementById('beneficiary');
+    const holderInput = document.getElementById('holder');
+    const remarkInput = document.getElementById('remark');
+    const mintWalletBtn = document.getElementById('mintWallet');
+    const mintBackendBtn = document.getElementById('mintBackend');
+    const result = document.getElementById('result');
+
+    function updateWalletStatus() {
+      if (WALLET.connected) {
+        walletStatus.innerHTML = `<span class="wallet-info">已连接 ${short(WALLET.address)}</span>`;
+        connectBtn.textContent = '已连接';
+        connectBtn.disabled = true;
+        mintWalletBtn.disabled = false;
+      } else {
+        walletStatus.textContent = '钱包未连接';
+        connectBtn.textContent = '连接钱包';
+        connectBtn.disabled = false;
+        mintWalletBtn.disabled = true;
+      }
+    }
+
+    onWalletUIUpdate(updateWalletStatus);
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        await connectWallet();
+        updateWalletStatus();
+      } catch (e) {
+        alert(`连接失败：${e.message}`);
+      }
+    });
+
+    computeBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) { alert('请先选择文件'); return; }
+      const hash = await hashFile(file);
+      tokenIdInput.value = hash;
+    });
+
+    function show(msg, success) {
+      result.innerHTML = msg;
+      result.className = `result ${success ? 'success' : 'error'}`;
+    }
+
+    function getInputs() {
+      const tokenId = tokenIdInput.value.trim();
+      const beneficiary = beneficiaryInput.value.trim();
+      const holder = holderInput.value.trim();
+      const remark = remarkInput.value.trim();
+      if (!tokenId || tokenId.length !== 66) throw new Error('请输入有效的 tokenId');
+      if (!/^0x[0-9a-fA-F]{40}$/.test(beneficiary)) throw new Error('受益人地址格式不正确');
+      if (!/^0x[0-9a-fA-F]{40}$/.test(holder)) throw new Error('持有人地址格式不正确');
+      return { tokenId, beneficiary, holder, remark: remark || '0x' };
+    }
+
+    mintWalletBtn.addEventListener('click', async () => {
+      try {
+        const { tokenId, beneficiary, holder, remark } = getInputs();
+        const signer = await getConnectedSigner();
+        const registry = getTokenRegistryContract(signer);
+
+        const minterRole = await registry.MINTER_ROLE();
+        const hasRole = await registry.hasRole(minterRole, WALLET.address);
+        if (!hasRole) {
+          show('当前钱包没有 MINTER_ROLE，无法铸造。', false);
+          return;
+        }
+
+        const exists = await registry.exists(tokenId);
+        if (exists) {
+          show('该 tokenId 已被铸造。', false);
+          return;
+        }
+
+        const tx = await registry.mint(beneficiary, holder, tokenId, remark);
+        await tx.wait();
+        const titleEscrow = await registry.ownerOf(tokenId);
+        show(
+          `铸造成功<br/>Token ID: <code>${tokenId}</code><br/>TitleEscrow: <code>${titleEscrow}</code><br/>交易：<a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a>`,
+          true
+        );
+      } catch (e) {
+        show(`铸造失败：${e.reason || e.message}`, false);
+      }
+    });
+
+    mintBackendBtn.addEventListener('click', async () => {
+      try {
+        const body = getInputs();
+        mintBackendBtn.disabled = true;
+        const res = await fetch('/api/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (data.success) {
+          show(
+            `铸造成功<br/>Token ID: <code>${data.tokenId}</code><br/>TitleEscrow: <code>${data.titleEscrow}</code><br/>交易：<a href="https://sepolia.etherscan.io/tx/${data.txHash}" target="_blank">${data.txHash}</a>`,
+            true
+          );
+        } else {
+          show(`铸造失败：${data.error}`, false);
+        }
+      } catch (e) {
+        show(`铸造失败：${e.message}`, false);
+      } finally {
+        mintBackendBtn.disabled = false;
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.configReady;
+      updateWalletStatus();
+      if (CONFIG.deployer) {
+        beneficiaryInput.value = CONFIG.deployer;
+        holderInput.value = CONFIG.deployer;
+      }
+    });
+  </script>
+</body>
+</html>

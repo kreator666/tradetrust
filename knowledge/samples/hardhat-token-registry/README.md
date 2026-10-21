@@ -72,6 +72,22 @@ TitleEscrowFactory 已在 Etherscan Sepolia 自动验证。
 
 TradeTrustToken 由于 npm 发布包与 GitHub tag 的依赖版本差异，hardhat-verify 自动匹配未成功；其完整源码已公开在 [TradeTrust/token-registry](https://github.com/TradeTrust/token-registry)，可通过 Etherscan 的 "Verify via flattened source" 手动提交验证。
 
+## 前端展示页面
+
+基于 Node + Express 的多页面前端，端口默认 `3001`，包含：
+
+- **首页** (`/`)：展示官方 Token Registry 部署配置与功能入口。
+- **签发/铸造** (`/issue.html`)：上传文件 → 计算 keccak256 作为 tokenId → 通过钱包签名或本地部署账户调用 `TradeTrustToken.mint()`，自动创建 TitleEscrow。
+- **验证与 Endorsement Chain** (`/verify.html`)：输入 tokenId 或上传文件 → 查询 token owner、beneficiary、holder、tokenURI，并读取 TitleEscrow 事件历史。
+- **转让/归还** (`/transfer.html`)：连接 MetaMask，对 TitleEscrow 执行 nominee 提名、beneficiary/holder 转让、同时转让、拒绝转让、归还给签发方（returnToIssuer）。
+- **权限管理** (`/admin.html`)：查看/授权/撤销 MinterRole、AccepterRole、RestorerRole。
+
+```bash
+npm run frontend
+```
+
+打开 `http://localhost:3001`。注意：最小 UUPS 实现的前端运行在 `http://localhost:3000`。
+
 ## 与最小 UUPS 实现的对比
 
 详见 `knowledge/docs/09-official-vs-custom.md`。
